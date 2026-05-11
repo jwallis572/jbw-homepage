@@ -1077,9 +1077,13 @@ function applyWidgets() {
   rc.style.display = sr ? '' : 'none';
   if (!sw && !sr) {
     row.style.display = 'none';
-  } else {
+    row.style.gridTemplateColumns = '';
+  } else if (!sw || !sr) {
     row.style.display = 'grid';
-    row.style.gridTemplateColumns = (sw && sr) ? '60% 40%' : '1fr';
+    row.style.gridTemplateColumns = '1fr';
+  } else {
+    row.style.display = '';
+    row.style.gridTemplateColumns = '';
   }
 }
 
