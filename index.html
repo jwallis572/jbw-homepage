@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jordan's Start Page</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+  <!-- No-flash theme + accent init — runs sync before paint -->
+  <script>
+    (function () {
+      var t = localStorage.getItem('jordan_start_theme');
+      var pref = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t || pref);
+      var a = localStorage.getItem('jordan_start_accent') || '#3b82f6';
+      document.documentElement.style.setProperty('--accent', a);
+    })();
+  </script>
+
+  <style>
+    /* ── Variables ── */
+    :root { --accent: #3b82f6; --accent-20: rgba(59,130,246,0.2); --accent-40: rgba(59,130,246,0.4); }
+
+    [data-theme="dark"] {
+      --bg: #080808;
+      --card-bg: rgba(255,255,255,0.04);
+      --card-border: rgba(255,255,255,0.08);
+      --text-primary: #f2f2f2;
+      --text-secondary: rgba(242,242,242,0.55);
+      --search-bg: rgba(255,255,255,0.06);
+      --search-border: rgba(255,255,255,0.1);
+      --suggestion-bg: #18181b;
+      --panel-bg: rgba(10,10,13,0.94);
+      --input-bg: rgba(255,255,255,0.06);
+      --input-border: rgba(255,255,255,0.12);
+    }
+    [data-theme="light"] {
+      --bg: #f0f0f5;
+      --card-bg: rgba(255,255,255,0.75);
+      --card-border: rgba(0,0,0,0.07);
+      --text-primary: #0a0a0a;
+      --text-secondary: rgba(10,10,10,0.5);
+      --search-bg: rgba(255,255,255,0.9);
+      --search-border: rgba(0,0,0,0.1);
+      --suggestion-bg: #ffffff;
+      --panel-bg: rgba(238,238,243,0.94);
+      --input-bg: rgba(0,0,0,0.04);
+      --input-border: rgba(0,0,0,0.12);
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      transition: background 150ms ease, color 150ms ease;
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+    }
+    .header-left h1 {
+      font-size: clamp(4rem, 10vw, 7rem);
+      font-weight: 200;
+      letter-spacing: -4px;
+      line-height: 1;
+    }
+    .header-left p {
+      font-size: clamp(1.1rem, 2.5vw, 1.8rem);
+      font-weight: 300;
+      opacity: 0.75;
+      margin-top: 0.4rem;
+    }
+    .header-right { display: flex; gap: 0.6rem; padding-top: 0.5rem; }
+
+    .icon-btn {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+    }
+    .icon-btn:hover { background: var(--accent); color: white; border-color: transparent; }
+
+    /* ── Search ── */
+    .search-container {
+      display: flex; justify-content: center;
+      margin: 0 0 2.5rem 0;
+    }
+    .search-wrapper { position: relative; width: 100%; max-width: 860px; }
+    .search-bar {
+      width: 100%;
+      padding: 18px 130px 18px 28px;
+      font-size: 1.1rem;
+      font-family: 'Inter', sans-serif;
+      border: 1px solid var(--search-border);
+      border-radius: 9999px;
+      background: var(--search-bg);
+      color: var(--text-primary);
+      -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+      transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+    }
+    .search-bar::placeholder { color: var(--text-secondary); }
+    .search-bar:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-40);
+    }
+
+    .engine-pill {
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 9999px;
+      padding: 5px 14px;
+      font-size: 0.8rem; font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color 150ms ease;
+    }
+    .engine-pill:hover { color: var(--text-primary); }
+
+    #suggestions {
+      position: absolute;
+      top: calc(100% + 8px); left: 0; right: 0;
+      background: var(--suggestion-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+      overflow: hidden;
+      z-index: 1000;
+      display: none;
+    }
+    .suggestion-item {
+      padding: 12px 24px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 100ms ease;
+    }
+    .suggestion-item:hover { background: var(--card-bg); }
+
+    /* ── Cards ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+      opacity: 0;
+      animation: fadeInUp 400ms ease-out forwards;
+      transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.4s ease, border-color 150ms ease, background 150ms ease;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .card { animation: none; opacity: 1; }
+      .card:hover { transform: none !important; }
+    }
+    .card:not(.dragging):hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.1rem;
+    }
+    .card-title {
+      font-size: 0.85rem; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+    .card-drag-handle {
+      font-size: 1.1rem; color: var(--text-secondary);
+      cursor: grab; opacity: 0;
+      transition: opacity 150ms ease;
+      user-select: none; line-height: 1;
+    }
+    .card:hover .card-drag-handle { opacity: 0.6; }
+    .card-drag-handle:active { cursor: grabbing; }
+
+    /* ── Links ── */
+    .links { list-style: none; }
+    .link-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 5px 0; min-height: 44px;
+      transition: transform 150ms ease;
+    }
+    .link-item:hover { transform: translateX(3px); }
+    .link-icon {
+      width: 18px; text-align: center; font-size: 0.95rem;
+      color: var(--accent); opacity: 0.6; flex-shrink: 0;
+      transition: opacity 150ms ease;
+    }
+    .link-item:hover .link-icon { opacity: 1; }
+    .link-item a {
+      color: var(--text-primary); text-decoration: none;
+      font-size: 1.05rem; font-weight: 400; flex: 1;
+      transition: color 150ms ease;
+    }
+    .link-item:hover a { color: var(--accent); }
+
+    /* ── Edit mode ── */
+    .link-delete-btn {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: none; background: #ef4444; color: white;
+      font-size: 1rem; line-height: 1; cursor: pointer;
+      display: none; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: transform 150ms ease;
+    }
+    .link-delete-btn:hover { transform: scale(1.15); }
+    .link-row-drag { color: var(--text-secondary); cursor: grab; display: none; font-size: 0.9rem; flex-shrink: 0; }
+
+    body.edit-mode .link-delete-btn { display: flex; }
+    body.edit-mode .link-row-drag { display: block; }
+    body.edit-mode .card { border-color: var(--accent-40); }
+    body.edit-mode .card:hover { border-color: var(--accent); }
+
+    .add-link-btn {
+      display: none; width: 100%; margin-top: 0.7rem;
+      padding: 8px; border-radius: 10px;
+      border: 1px dashed var(--card-border);
+      background: transparent; color: var(--text-secondary);
+      font-size: 0.9rem; font-weight: 500; font-family: 'Inter', sans-serif;
+      cursor: pointer; transition: all 150ms ease;
+    }
+    .add-link-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-20); }
+    body.edit-mode .add-link-btn { display: block; }
+
+    .add-link-form {
+      margin-top: 0.7rem; padding: 0.9rem;
+      border: 1px solid var(--card-border); border-radius: 12px;
+      background: var(--input-bg); display: none;
+    }
+    .add-link-form input {
+      width: 100%; padding: 7px 11px; margin-bottom: 7px;
+      border-radius: 8px; border: 1px solid var(--input-border);
+      background: var(--search-bg); color: var(--text-primary);
+      font-size: 0.88rem; font-family: 'Inter', sans-serif;
+      transition: border-color 150ms ease;
+    }
+    .add-link-form input:focus { outline: none; border-color: var(--accent); }
+    .add-link-form input::placeholder { color: var(--text-secondary); }
+    .form-buttons { display: flex; gap: 7px; }
+    .btn-save, .btn-cancel {
+      padding: 6px 16px; border-radius: 8px; border: none;
+      font-size: 0.85rem; font-weight: 500; font-family: 'Inter', sans-serif;
+      cursor: pointer; transition: opacity 150ms ease;
+    }
+    .btn-save { background: var(--accent); color: white; }
+    .btn-save:hover { opacity: 0.85; }
+    .btn-cancel { background: var(--input-bg); color: var(--text-secondary); border: 1px solid var(--input-border); }
+    .btn-cancel:hover { color: var(--text-primary); }
+
+    /* ── Drag states ── */
+    .card.dragging { opacity: 0.45; }
+    .card.drag-over { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-20); }
+
+    /* ── Weather ── */
+    .weather-row { display: grid; grid-template-columns: 60% 40%; gap: 1.5rem; }
+    .weather-card, .radar-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px; padding: 1.75rem;
+      -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+      opacity: 0;
+      animation: fadeInUp 400ms ease-out 420ms forwards;
+      transition: background 150ms ease, border-color 150ms ease;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .weather-card, .radar-card { animation: none; opacity: 1; }
+    }
+    .section-label {
+      font-size: 0.85rem; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--text-secondary); margin-bottom: 1.4rem;
+    }
+    .weather-current { display: flex; align-items: flex-end; gap: 1.5rem; margin-bottom: 1.75rem; }
+    .weather-temp { font-size: 4.5rem; font-weight: 300; line-height: 1; }
+    .weather-condition { font-size: 1.15rem; font-weight: 400; }
+    .weather-meta { font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.2rem; }
+    .forecast-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center;
+    }
+    .forecast-day {
+      padding: 10px 4px; border-radius: 14px; background: var(--input-bg);
+      transition: background 150ms ease;
+    }
+    .forecast-day-name { font-size: 0.7rem; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .forecast-icon { font-size: 1.7rem; margin: 6px 0; }
+    .forecast-temps { font-size: 0.82rem; }
+    .forecast-rain { font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; }
+    .weather-error { text-align: center; padding: 2rem 1rem; color: var(--text-secondary); }
+    .weather-error a { color: var(--accent); text-decoration: none; display: inline-block; margin-top: 0.5rem; }
+
+    /* ── Settings panel ── */
+    .settings-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 900; opacity: 0; pointer-events: none;
+      transition: opacity 250ms ease;
+    }
+    .settings-overlay.open { opacity: 1; pointer-events: all; }
+
+    .settings-panel {
+      position: fixed; top: 0; right: 0;
+      width: 340px; height: 100vh;
+      background: var(--panel-bg);
+      -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%);
+      border-left: 1px solid var(--card-border);
+      z-index: 1000;
+      transform: translateX(100%);
+      transition: transform 300ms cubic-bezier(0.32,0.72,0,1), background 150ms ease;
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+    .settings-panel.open { transform: translateX(0); }
+
+    .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    .settings-header h2 { font-size: 1.05rem; font-weight: 500; }
+    .settings-close {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: 1px solid var(--card-border); background: var(--input-bg);
+      color: var(--text-primary); font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 150ms ease, color 150ms ease;
+    }
+    .settings-close:hover { background: var(--accent); color: white; border-color: transparent; }
+
+    .settings-section { margin-bottom: 2rem; }
+    .settings-section-label {
+      font-size: 0.72rem; font-weight: 500; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0.9rem;
+    }
+
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+    .toggle-label { font-size: 0.95rem; }
+
+    .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: var(--input-border); border-radius: 9999px;
+      cursor: pointer; transition: background 150ms ease;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: white; top: 3px; left: 3px;
+      transition: transform 150ms ease;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    .accent-swatches { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem; }
+    .accent-swatch {
+      width: 28px; height: 28px; border-radius: 50%;
+      cursor: pointer; border: 2px solid transparent;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 150ms ease, border-color 150ms ease;
+    }
+    .accent-swatch:hover { transform: scale(1.15); }
+    .accent-swatch.active { border-color: white; box-shadow: 0 0 0 2px var(--accent); }
+    .accent-swatch .check { color: white; font-size: 0.72rem; opacity: 0; transition: opacity 150ms ease; }
+    .accent-swatch.active .check { opacity: 1; }
+    [data-theme="light"] .accent-swatch.active { border-color: #333; box-shadow: 0 0 0 2px var(--accent); }
+
+    .custom-accent-row { display: flex; align-items: center; gap: 10px; }
+    .custom-accent-preview {
+      width: 28px; height: 28px; border-radius: 50%;
+      flex-shrink: 0; border: 2px solid var(--input-border);
+      background: var(--accent);
+    }
+    .custom-accent-input {
+      flex: 1; padding: 7px 11px; border-radius: 8px;
+      border: 1px solid var(--input-border); background: var(--input-bg);
+      color: var(--text-primary); font-size: 0.88rem; font-family: 'Inter', sans-serif;
+      transition: border-color 150ms ease;
+    }
+    .custom-accent-input:focus { outline: none; border-color: var(--accent); }
+
+    .engine-options { display: flex; gap: 7px; }
+    .engine-option {
+      flex: 1; padding: 8px 0; border-radius: 10px;
+      border: 1px solid var(--input-border); background: var(--input-bg);
+      color: var(--text-secondary); font-size: 0.82rem; font-weight: 500;
+      font-family: 'Inter', sans-serif; cursor: pointer; text-align: center;
+      transition: all 150ms ease;
+    }
+    .engine-option.active { background: var(--accent); color: white; border-color: transparent; }
+    .engine-option:not(.active):hover { color: var(--text-primary); }
+
+    .widget-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid var(--card-border);
+    }
+    .widget-row:last-child { border-bottom: none; }
+
+    .edit-mode-btn {
+      width: 100%; padding: 12px; border-radius: 12px;
+      border: 1px solid var(--accent); background: var(--accent-20);
+      color: var(--accent); font-size: 0.95rem; font-weight: 500;
+      font-family: 'Inter', sans-serif; cursor: pointer; transition: all 150ms ease;
+    }
+    .edit-mode-btn:hover, .edit-mode-btn.active { background: var(--accent); color: white; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 2rem; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+      color: var(--text-primary);
+      padding: 11px 24px; border-radius: 9999px;
+      font-size: 0.88rem; font-weight: 500; z-index: 2000;
+      transition: transform 300ms cubic-bezier(0.34,1.56,0.64,1);
+      pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    footer {
+      text-align: center; margin-top: 4rem; padding-bottom: 2rem;
+      opacity: 0.3; font-size: 0.8rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 1200px) {
+      .cards-grid { grid-template-columns: repeat(2, 1fr); }
+      .weather-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .cards-grid { grid-template-columns: 1fr; }
+      .weather-row { grid-template-columns: 1fr; }
+      .settings-panel { width: 100%; }
+      .forecast-grid { grid-template-columns: repeat(4, 1fr); }
+      .forecast-day:nth-child(n+5) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-left">
+      <h1 id="clock">--:--</h1>
+      <p id="date">Loading...</p>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="theme-btn" title="Toggle dark/light mode" aria-label="Toggle theme">🌙</button>
+      <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Open settings">⚙️</button>
+    </div>
+  </header>
+
+  <div class="search-container">
+    <div class="search-wrapper">
+      <input type="text" class="search-bar" id="search" placeholder="Search the web…" autocomplete="off" spellcheck="false">
+      <div id="suggestions" role="listbox"></div>
+      <button class="engine-pill" id="engine-pill" aria-label="Change search engine">Google ▾</button>
+    </div>
+  </div>
+
+  <div class="cards-grid" id="cards-grid"></div>
+
+  <div class="weather-row" id="weather-row">
+    <div class="weather-card" id="weather-card">
+      <div class="section-label">🌤 Houston, TX — Weather</div>
+      <div id="weather-content"><p style="color:var(--text-secondary)">Loading…</p></div>
+    </div>
+    <div class="radar-card" id="radar-card">
+      <div class="section-label">🌧 Live Radar — Houston</div>
+      <div id="radar-content">
+        <iframe id="radar-iframe"
+          src="https://embed.windy.com/embed2.html?lat=29.76&lon=-95.37&zoom=10&level=surface&overlay=radar&product=radar&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
+          width="100%" height="360" frameborder="0"
+          style="border-radius:14px;display:block;margin-top:10px;"
+          title="Houston Weather Radar">
+        </iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>Jordan's Start Page</footer>
+
+<!-- Settings Panel -->
+<div class="settings-overlay" id="settings-overlay"></div>
+<div class="settings-panel" id="settings-panel" role="dialog" aria-label="Settings">
+  <div class="settings-header">
+    <h2>Settings</h2>
+    <button class="settings-close" id="settings-close" aria-label="Close settings">✕</button>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-label">Appearance</div>
+    <div class="toggle-row">
+      <span class="toggle-label">Dark Mode</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="dark-mode-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="accent-swatches" id="accent-swatches"></div>
+    <div class="custom-accent-row">
+      <div class="custom-accent-preview" id="accent-preview"></div>
+      <input type="text" class="custom-accent-input" id="accent-input" placeholder="#3b82f6" maxlength="7">
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-label">Search Engine</div>
+    <div class="engine-options" id="engine-options">
+      <button class="engine-option" data-engine="google">Google</button>
+      <button class="engine-option" data-engine="perplexity">Perplexity</button>
+      <button class="engine-option" data-engine="duckduckgo">DDG</button>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-label">Clock</div>
+    <div class="toggle-row">
+      <span class="toggle-label">Show Seconds</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="seconds-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-label">Widgets</div>
+    <div class="widget-row">
+      <span>Weather Forecast</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="weather-toggle" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="widget-row">
+      <span>Live Radar</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="radar-toggle" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-label">Edit Mode</div>
+    <button class="edit-mode-btn" id="edit-mode-btn">✏️ Edit Links</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  SITE CONFIG — edit links here only
+// ══════════════════════════════════════════
+const SITE_CONFIG = {
+  tiles: [
+    {
+      id: 'personal', emoji: '👤', title: 'Personal',
+      links: [
+        { label: 'Gmail',              url: 'https://mail.google.com',                                                                                             icon: 'fa-solid fa-envelope' },
+        { label: 'Google Drive',       url: 'https://drive.google.com',                                                                                            icon: 'fa-solid fa-cloud' },
+        { label: 'Google Calendar',    url: 'https://calendar.google.com',                                                                                         icon: 'fa-solid fa-calendar-days' },
+        { label: 'UTHealth SharePoint',url: 'https://uthtmc-my.sharepoint.com/',                                                                                   icon: 'fa-solid fa-cloud' },
+        { label: 'Spotify',            url: 'https://open.spotify.com',                                                                                            icon: 'fa-brands fa-spotify' },
+      ]
+    },
+    {
+      id: 'finance', emoji: '💰', title: 'Finance',
+      links: [
+        { label: 'Monarch',         url: 'https://app.monarch.com/accounts?chartType=performance&dateRange=1M&timeframe=month', icon: 'fa-solid fa-chart-line' },
+        { label: 'PNC Bank',        url: 'https://www.pnc.com/en/personal-banking.html',                                       icon: 'fa-solid fa-building-columns' },
+        { label: 'American Express',url: 'https://www.americanexpress.com/',                                                   icon: 'fa-solid fa-credit-card' },
+        { label: 'Chase',           url: 'https://www.chase.com/',                                                             icon: 'fa-solid fa-building-columns' },
+        { label: 'VyStar',          url: 'https://vystarcu.org/',                                                              icon: 'fa-solid fa-building-columns' },
+      ]
+    },
+    {
+      id: 'work', emoji: '🏥', title: 'Work',
+      links: [
+        { label: 'MHH EPIC',            url: 'https://one.memorialhermann.org/',                                                                                                              icon: 'fa-solid fa-hospital' },
+        { label: 'LBJ EPIC',            url: 'https://citrixaccess.harrishealth.org/logon/LogonPoint/tmindex.html',                                                                          icon: 'fa-solid fa-hospital' },
+        { label: 'OpenEvidence',        url: 'https://www.openevidence.com/',                                                                                                                icon: 'fa-solid fa-magnifying-glass' },
+        { label: 'Residency Tracking',  url: 'https://docs.google.com/spreadsheets/d/1Qadz15Aw_VQvVbugblH2b0y-akcrWrNNdWFm_-_2yDo/edit?gid=674997600#gid=674997600',                      icon: 'fa-solid fa-list-check' },
+        { label: 'EM Houston',          url: 'https://emhouston.org/',                                                                                                                       icon: 'fa-solid fa-globe' },
+        { label: 'New Innovations',     url: 'https://www.new-innov.com/uth/Login.aspx',                                                                                                    icon: 'fa-solid fa-file-lines' },
+        { label: 'ECMO Drive',          url: 'https://drive.google.com/drive/folders/1KtJ2H2ezZU-_k3t_YFwkGXVQLULFITp9?usp=drive_link',                                                   icon: 'fa-solid fa-folder' },
+        { label: 'ECMO Shift Sign-Up',  url: 'https://docs.google.com/spreadsheets/d/1DzUs04M00FSzY-r9lgELBvIly3Ml566z1honDgUEJj0/edit?usp=drive_link',                                   icon: 'fa-solid fa-calendar-plus' },
+      ]
+    },
+    {
+      id: 'study', emoji: '📚', title: 'Study',
+      links: [
+        { label: 'EM:RAP',              url: 'https://www.emrap.org/',          icon: 'fa-solid fa-podcast' },
+        { label: 'CorePendium',         url: 'https://www.emrap.org/corependium', icon: 'fa-solid fa-book' },
+        { label: "JBW's PGY Study Guide", url: 'https://jbwstudyguide.vercel.app', icon: 'fa-solid fa-graduation-cap' },
+      ]
+    },
+  ],
+  accents: [
+    { name: 'Blue',   color: '#3b82f6' },
+    { name: 'Teal',   color: '#14b8a6' },
+    { name: 'Violet', color: '#8b5cf6' },
+    { name: 'Rose',   color: '#f43f5e' },
+    { name: 'Amber',  color: '#f59e0b' },
+    { name: 'Green',  color: '#22c55e' },
+    { name: 'Coral',  color: '#f97316' },
+    { name: 'Slate',  color: '#64748b' },
+  ],
+};
+
+// ══════════════════════════════════════════
+//  Helpers
+// ══════════════════════════════════════════
+const LS = k => `jordan_start_${k}`;
+const get = k => localStorage.getItem(LS(k));
+const set = (k, v) => localStorage.setItem(LS(k), typeof v === 'object' ? JSON.stringify(v) : v);
+
+function hexToRgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════
+//  State
+// ══════════════════════════════════════════
+const state = {
+  get theme()      { return get('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); },
+  get accent()     { return get('accent') || '#3b82f6'; },
+  get engine()     { return get('engine') || 'google'; },
+  get showSeconds(){ return get('show_seconds') === 'true'; },
+  get showWeather(){ return get('show_weather') !== 'false'; },
+  get showRadar()  { return get('show_radar')   !== 'false'; },
+  get cardOrder()  { try { return JSON.parse(get('card_order')); } catch { return null; } },
+  get tiles()      { try { return JSON.parse(get('tiles')); }      catch { return null; } },
+};
+
+let editMode = false;
+let editDirty = false;
+
+function getRuntimeTiles() {
+  return state.tiles || SITE_CONFIG.tiles.map(t => ({ ...t, links: t.links.map(l => ({...l})) }));
+}
+function saveTiles(tiles) { set('tiles', tiles); }
+function getOrder() { return state.cardOrder || getRuntimeTiles().map(t => t.id); }
+
+// ══════════════════════════════════════════
+//  Theme
+// ══════════════════════════════════════════
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  set('theme', theme);
+  document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀️' : '🌙';
+  document.getElementById('dark-mode-toggle').checked = theme === 'dark';
+}
+
+document.getElementById('theme-btn').addEventListener('click', () => applyTheme(state.theme === 'dark' ? 'light' : 'dark'));
+document.getElementById('dark-mode-toggle').addEventListener('change', e => applyTheme(e.target.checked ? 'dark' : 'light'));
+
+// ══════════════════════════════════════════
+//  Accent
+// ══════════════════════════════════════════
+function applyAccent(hex) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return;
+  document.documentElement.style.setProperty('--accent', hex);
+  document.documentElement.style.setProperty('--accent-20', hexToRgba(hex, 0.2));
+  document.documentElement.style.setProperty('--accent-40', hexToRgba(hex, 0.4));
+  set('accent', hex);
+  document.getElementById('accent-preview').style.background = hex;
+  document.getElementById('accent-input').value = hex;
+  document.querySelectorAll('.accent-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color.toLowerCase() === hex.toLowerCase());
+  });
+}
+
+function buildSwatches() {
+  const wrap = document.getElementById('accent-swatches');
+  SITE_CONFIG.accents.forEach(({name, color}) => {
+    const btn = document.createElement('button');
+    btn.className = 'accent-swatch';
+    btn.dataset.color = color;
+    btn.title = name;
+    btn.style.background = color;
+    btn.innerHTML = '<span class="check">✓</span>';
+    btn.addEventListener('click', () => applyAccent(color));
+    wrap.appendChild(btn);
+  });
+}
+
+document.getElementById('accent-input').addEventListener('input', e => {
+  const v = e.target.value.trim();
+  document.getElementById('accent-preview').style.background = v;
+  if (/^#[0-9a-f]{6}$/i.test(v)) applyAccent(v);
+});
+
+// ══════════════════════════════════════════
+//  Clock
+// ══════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const opts = { hour: 'numeric', minute: '2-digit' };
+  if (state.showSeconds) opts.second = '2-digit';
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', opts);
+  document.getElementById('date').textContent = now.toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+  });
+}
+setInterval(updateClock, 1000);
+document.getElementById('seconds-toggle').addEventListener('change', e => {
+  set('show_seconds', e.target.checked);
+  updateClock();
+});
+
+// ══════════════════════════════════════════
+//  Search
+// ══════════════════════════════════════════
+const ENGINES = {
+  google:     { label: 'Google',     url: q => `https://www.google.com/search?q=${encodeURIComponent(q)}` },
+  perplexity: { label: 'Perplexity', url: q => `https://www.perplexity.ai/search?q=${encodeURIComponent(q)}` },
+  duckduckgo: { label: 'DDG',        url: q => `https://duckduckgo.com/?q=${encodeURIComponent(q)}` },
+};
+
+function setEngine(engine) {
+  set('engine', engine);
+  document.getElementById('engine-pill').textContent = ENGINES[engine].label + ' ▾';
+  document.querySelectorAll('.engine-option').forEach(b => b.classList.toggle('active', b.dataset.engine === engine));
+}
+
+function isUrl(s) {
+  return /^https?:\/\//i.test(s) ||
+    /^[a-zA-Z0-9]([a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}(\/\S*)?$/.test(s.trim());
+}
+
+function doSearch(q) {
+  q = q.trim();
+  if (!q) return;
+  const url = isUrl(q) ? (q.startsWith('http') ? q : 'https://' + q) : ENGINES[state.engine].url(q);
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+const searchEl = document.getElementById('search');
+const suggestEl = document.getElementById('suggestions');
+let debounce;
+
+searchEl.addEventListener('input', () => {
+  clearTimeout(debounce);
+  const q = searchEl.value.trim();
+  if (q.length < 2 || isUrl(q)) { suggestEl.style.display = 'none'; return; }
+  debounce = setTimeout(async () => {
+    try {
+      const r = await fetch(`https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      const items = d[1] || [];
+      if (!items.length) { suggestEl.style.display = 'none'; return; }
+      suggestEl.innerHTML = items.slice(0,8).map(s =>
+        `<div class="suggestion-item" role="option" tabindex="0" data-q="${encodeURIComponent(s)}">${s}</div>`
+      ).join('');
+      suggestEl.style.display = 'block';
+    } catch { suggestEl.style.display = 'none'; }
+  }, 250);
+});
+
+suggestEl.addEventListener('click', e => {
+  const item = e.target.closest('.suggestion-item');
+  if (!item) return;
+  const q = decodeURIComponent(item.dataset.q);
+  searchEl.value = q;
+  suggestEl.style.display = 'none';
+  doSearch(q);
+});
+
+searchEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { suggestEl.style.display = 'none'; doSearch(searchEl.value); }
+  if (e.key === 'Escape') { searchEl.value = ''; suggestEl.style.display = 'none'; }
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrapper')) suggestEl.style.display = 'none';
+});
+
+document.getElementById('engine-pill').addEventListener('click', () => {
+  const keys = Object.keys(ENGINES);
+  setEngine(keys[(keys.indexOf(state.engine) + 1) % keys.length]);
+});
+
+document.querySelectorAll('.engine-option').forEach(b =>
+  b.addEventListener('click', () => setEngine(b.dataset.engine))
+);
+
+// ══════════════════════════════════════════
+//  Render Tiles
+// ══════════════════════════════════════════
+function renderTiles() {
+  const grid = document.getElementById('cards-grid');
+  const tiles = getRuntimeTiles();
+  const order = getOrder();
+  const sorted = [...order, ...tiles.map(t=>t.id).filter(id=>!order.includes(id))]
+    .map(id => tiles.find(t=>t.id===id)).filter(Boolean);
+
+  grid.innerHTML = '';
+  sorted.forEach((tile, i) => grid.appendChild(buildCard(tile, i)));
+  setupCardDnD();
+  setupTouchDnD();
+}
+
+function buildCard(tile, animIdx) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.tileId = tile.id;
+  card.style.animationDelay = `${animIdx * 60}ms`;
+  card.draggable = true;
+
+  const hdr = document.createElement('div');
+  hdr.className = 'card-header';
+  hdr.innerHTML = `
+    <span class="card-title">${tile.emoji} ${tile.title}</span>
+    <span class="card-drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span>
+  `;
+
+  const ul = document.createElement('ul');
+  ul.className = 'links';
+  ul.id = `links-${tile.id}`;
+  tile.links.forEach(link => ul.appendChild(buildLinkItem(link, tile.id)));
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-link-btn';
+  addBtn.textContent = '+ Add Link';
+  addBtn.addEventListener('click', () => toggleAddForm(tile.id, addForm));
+
+  const addForm = document.createElement('div');
+  addForm.className = 'add-link-form';
+  addForm.innerHTML = `
+    <input type="text" placeholder="Label" class="af-label">
+    <input type="url"  placeholder="https://example.com" class="af-url">
+    <input type="text" placeholder="fa-solid fa-link" class="af-icon" value="fa-solid fa-link">
+    <div class="form-buttons">
+      <button class="btn-save">Save</button>
+      <button class="btn-cancel">Cancel</button>
+    </div>
+  `;
+  addForm.querySelector('.btn-save').addEventListener('click', () => saveNewLink(tile.id, addForm));
+  addForm.querySelector('.btn-cancel').addEventListener('click', () => { addForm.style.display = 'none'; });
+
+  card.appendChild(hdr);
+  card.appendChild(ul);
+  card.appendChild(addBtn);
+  card.appendChild(addForm);
+  return card;
+}
+
+function buildLinkItem(link, tileId) {
+  const li = document.createElement('li');
+  li.className = 'link-item';
+
+  const del = document.createElement('button');
+  del.className = 'link-delete-btn';
+  del.innerHTML = '−';
+  del.title = 'Delete';
+  del.addEventListener('click', () => deleteLink(tileId, link, li));
+
+  const icon = document.createElement('i');
+  icon.className = `link-icon ${link.icon}`;
+
+  const a = document.createElement('a');
+  a.href = link.url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.textContent = link.label;
+
+  const dh = document.createElement('span');
+  dh.className = 'link-row-drag';
+  dh.textContent = '⠿';
+
+  li.appendChild(del);
+  li.appendChild(icon);
+  li.appendChild(a);
+  li.appendChild(dh);
+  return li;
+}
+
+function toggleAddForm(tileId, form) {
+  const showing = form.style.display === 'block';
+  form.style.display = showing ? 'none' : 'block';
+  if (!showing) form.querySelector('.af-label').focus();
+}
+
+function saveNewLink(tileId, form) {
+  const label = form.querySelector('.af-label').value.trim();
+  const url   = form.querySelector('.af-url').value.trim();
+  const icon  = form.querySelector('.af-icon').value.trim() || 'fa-solid fa-link';
+  if (!label || !url) { showToast('Enter a label and URL'); return; }
+
+  const tiles = getRuntimeTiles();
+  const tile  = tiles.find(t => t.id === tileId);
+  if (!tile) return;
+
+  const newLink = { label, url, icon };
+  tile.links.push(newLink);
+  saveTiles(tiles);
+
+  document.getElementById(`links-${tileId}`).appendChild(buildLinkItem(newLink, tileId));
+  form.querySelectorAll('input').forEach(i => { i.value = ''; });
+  form.querySelector('.af-icon').value = 'fa-solid fa-link';
+  form.style.display = 'none';
+  editDirty = true;
+  showToast('Link added');
+}
+
+function deleteLink(tileId, link, li) {
+  const tiles = getRuntimeTiles();
+  const tile  = tiles.find(t => t.id === tileId);
+  if (!tile) return;
+  tile.links = tile.links.filter(l => l.label !== link.label || l.url !== link.url);
+  saveTiles(tiles);
+  li.remove();
+  editDirty = true;
+}
+
+// ══════════════════════════════════════════
+//  Card Drag & Drop (mouse/desktop)
+// ══════════════════════════════════════════
+let dragSrc = null;
+
+function setupCardDnD() {
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragSrc = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (card !== dragSrc) card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if (!dragSrc || dragSrc === card) return;
+      const grid = document.getElementById('cards-grid');
+      const kids = [...grid.children];
+      const si = kids.indexOf(dragSrc), ti = kids.indexOf(card);
+      grid.insertBefore(dragSrc, si < ti ? card.nextSibling : card);
+      set('card_order', [...grid.children].map(c => c.dataset.tileId));
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('drag-over'));
+      dragSrc = null;
+    });
+  });
+}
+
+// ══════════════════════════════════════════
+//  Card Touch Drag (mobile)
+// ══════════════════════════════════════════
+function setupTouchDnD() {
+  let src = null, clone = null;
+  const grid = document.getElementById('cards-grid');
+
+  grid.addEventListener('touchstart', e => {
+    const handle = e.target.closest('.card-drag-handle');
+    if (!handle) return;
+    src = handle.closest('.card');
+    if (!src) return;
+    const rect = src.getBoundingClientRect();
+    clone = src.cloneNode(true);
+    Object.assign(clone.style, {
+      position: 'fixed', width: rect.width + 'px', opacity: '0.8',
+      pointerEvents: 'none', zIndex: '9999', borderRadius: '20px',
+      left: rect.left + 'px', top: rect.top + 'px', transition: 'none',
+    });
+    document.body.appendChild(clone);
+    src.style.opacity = '0.35';
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchmove', e => {
+    if (!src || !clone) return;
+    const t = e.touches[0];
+    clone.style.left = (t.clientX - clone.offsetWidth / 2) + 'px';
+    clone.style.top  = (t.clientY - 60) + 'px';
+    clone.style.display = 'none';
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    clone.style.display = '';
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('drag-over'));
+    const over = el && el.closest('.card');
+    if (over && over !== src) over.classList.add('drag-over');
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchend', e => {
+    if (!src) return;
+    const t = e.changedTouches[0];
+    if (clone) { clone.style.display = 'none'; }
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    if (clone) { clone.remove(); clone = null; }
+    const target = el && el.closest('.card');
+    if (target && target !== src) {
+      const kids = [...grid.children];
+      const si = kids.indexOf(src), ti = kids.indexOf(target);
+      grid.insertBefore(src, si < ti ? target.nextSibling : target);
+      set('card_order', [...grid.children].map(c => c.dataset.tileId));
+    }
+    src.style.opacity = '';
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('drag-over'));
+    src = null;
+  });
+}
+
+// ══════════════════════════════════════════
+//  Edit Mode
+// ══════════════════════════════════════════
+document.getElementById('edit-mode-btn').addEventListener('click', () => {
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  const btn = document.getElementById('edit-mode-btn');
+  btn.classList.toggle('active', editMode);
+  btn.textContent = editMode ? '✅ Done Editing' : '✏️ Edit Links';
+  if (!editMode && editDirty) { showToast('Changes saved'); editDirty = false; }
+});
+
+// ══════════════════════════════════════════
+//  Widget Visibility
+// ══════════════════════════════════════════
+function applyWidgets() {
+  const row = document.getElementById('weather-row');
+  const wc  = document.getElementById('weather-card');
+  const rc  = document.getElementById('radar-card');
+  const sw  = state.showWeather, sr = state.showRadar;
+  wc.style.display = sw ? '' : 'none';
+  rc.style.display = sr ? '' : 'none';
+  if (!sw && !sr) {
+    row.style.display = 'none';
+  } else {
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = (sw && sr) ? '60% 40%' : '1fr';
+  }
+}
+
+document.getElementById('weather-toggle').addEventListener('change', e => { set('show_weather', e.target.checked); applyWidgets(); });
+document.getElementById('radar-toggle').addEventListener('change', e => { set('show_radar', e.target.checked); applyWidgets(); });
+
+// ══════════════════════════════════════════
+//  Settings Panel
+// ══════════════════════════════════════════
+const panel   = document.getElementById('settings-panel');
+const overlay = document.getElementById('settings-overlay');
+
+document.getElementById('settings-btn').addEventListener('click', () => { panel.classList.add('open'); overlay.classList.add('open'); });
+document.getElementById('settings-close').addEventListener('click', () => { panel.classList.remove('open'); overlay.classList.remove('open'); });
+overlay.addEventListener('click', () => { panel.classList.remove('open'); overlay.classList.remove('open'); });
+
+// ══════════════════════════════════════════
+//  Weather
+// ══════════════════════════════════════════
+const WX = {
+  0: ['☀️','Clear Sky'],       1: ['🌤️','Mainly Clear'],    2: ['⛅','Partly Cloudy'],
+  3: ['☁️','Overcast'],        45:['🌫️','Foggy'],           48:['🌫️','Icy Fog'],
+  51:['🌦️','Light Drizzle'],  53:['🌦️','Drizzle'],         55:['🌧️','Heavy Drizzle'],
+  61:['🌧️','Light Rain'],     63:['🌧️','Rain'],             65:['🌧️','Heavy Rain'],
+  71:['🌨️','Light Snow'],     73:['❄️','Snow'],              75:['❄️','Heavy Snow'],
+  77:['🌨️','Snow Grains'],    80:['🌦️','Light Showers'],    81:['🌧️','Showers'],
+  82:['⛈️','Heavy Showers'],  85:['🌨️','Snow Showers'],     86:['❄️','Heavy Snow Showers'],
+  95:['⛈️','Thunderstorm'],   96:['⛈️','Thunderstorm + Hail'], 99:['⛈️','Heavy Thunderstorm'],
+};
+const wx = code => WX[code] || ['🌡️','Unknown'];
+
+async function fetchWeather() {
+  try {
+    const r = await fetch(
+      'https://api.open-meteo.com/v1/forecast?latitude=29.76&longitude=-95.37' +
+      '&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m' +
+      '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code' +
+      '&timezone=America/Chicago'
+    );
+    if (!r.ok) throw new Error();
+    renderWeather(await r.json());
+  } catch {
+    document.getElementById('weather-content').innerHTML = `
+      <div class="weather-error">
+        <div style="font-size:2rem;margin-bottom:0.75rem">🌐</div>
+        <p>Weather unavailable on this network.</p>
+        <a href="https://weather.com/weather/today/l/Houston+TX+USTX0294:4:US" target="_blank" rel="noopener noreferrer">View on weather.com →</a>
+      </div>`;
+  }
+}
+
+function renderWeather(d) {
+  const c = d.current, dl = d.daily;
+  const tempF = Math.round(c.temperature_2m * 9/5 + 32);
+  const [icon, label] = wx(c.weather_code);
+  const wind = Math.round(c.wind_speed_10m * 0.621371);
+
+  const days = Array.from({length:7}, (_,i) => {
+    const day = new Date(dl.time[i] + 'T12:00:00');
+    const name = i === 0 ? 'Today' : day.toLocaleDateString('en-US', {weekday:'short'});
+    const hi = Math.round(dl.temperature_2m_max[i] * 9/5 + 32);
+    const lo = Math.round(dl.temperature_2m_min[i] * 9/5 + 32);
+    const rain = dl.precipitation_probability_max[i];
+    const [fi] = wx(dl.weather_code[i]);
+    return `<div class="forecast-day">
+      <div class="forecast-day-name">${name}</div>
+      <div class="forecast-icon">${fi}</div>
+      <div class="forecast-temps"><strong>${hi}°</strong> / ${lo}°</div>
+      <div class="forecast-rain">${rain}%</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('weather-content').innerHTML = `
+    <div class="weather-current">
+      <div class="weather-temp">${tempF}°F</div>
+      <div>
+        <div class="weather-condition">${icon} ${label}</div>
+        <div class="weather-meta">${c.relative_humidity_2m}% humidity · ${wind} mph wind</div>
+      </div>
+    </div>
+    <div class="forecast-grid">${days}</div>`;
+}
+
+// Radar timeout fallback (5 s)
+(function() {
+  const iframe = document.getElementById('radar-iframe');
+  const timer = setTimeout(() => {
+    document.getElementById('radar-content').innerHTML = `
+      <div class="weather-error" style="margin-top:1rem">
+        <div style="font-size:2rem;margin-bottom:0.75rem">📡</div>
+        <p>Live radar unavailable.</p>
+        <a href="https://radar.weather.gov/station/KHGX/standard" target="_blank" rel="noopener noreferrer"
+           style="display:inline-block;margin-top:0.75rem;padding:8px 20px;border-radius:9999px;background:var(--accent);color:white;text-decoration:none;font-size:0.88rem">
+          radar.weather.gov →
+        </a>
+      </div>`;
+  }, 5000);
+  iframe.addEventListener('load', () => clearTimeout(timer));
+})();
+
+setInterval(fetchWeather, 10 * 60 * 1000);
+
+// ══════════════════════════════════════════
+//  PWA
+// ══════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ══════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════
+(function init() {
+  applyTheme(state.theme);
+  applyAccent(state.accent);
+  buildSwatches();
+  setEngine(state.engine);
+
+  document.getElementById('seconds-toggle').checked = state.showSeconds;
+  document.getElementById('weather-toggle').checked = state.showWeather;
+  document.getElementById('radar-toggle').checked   = state.showRadar;
+  applyWidgets();
+
+  renderTiles();
+  updateClock();
+  fetchWeather();
+})();
+</script>
+</body>
+</html>
