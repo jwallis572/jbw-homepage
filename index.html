@@ -91,6 +91,10 @@
       margin-top: 0.4rem;
     }
     .header-right { display: flex; gap: 0.6rem; padding-top: 0.5rem; align-items: center; }
+    .icon-btns { display: flex; gap: 0.6rem; }
+    @media (max-width: 768px) {
+      .header-right { flex-direction: column; align-items: flex-end; gap: 0.4rem; padding-top: 0.25rem; }
+    }
 
     .pgy-badge {
       background: var(--accent-10);
@@ -506,13 +510,15 @@
       <p id="date">Loading...</p>
     </div>
     <div class="header-right">
+      <div class="icon-btns">
+        <button class="icon-btn" id="theme-btn" title="Toggle dark/light mode" aria-label="Toggle theme">🌙</button>
+        <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Open settings">⚙️</button>
+      </div>
       <div class="pgy-badge" id="pgy-badge">
         <span class="pgy-label" id="pgy-label">PGY2 WEEK</span>
         <span class="pgy-week" id="pgy-week">--</span>
         <span class="pgy-reset" id="pgy-reset">Resets --- ----</span>
       </div>
-      <button class="icon-btn" id="theme-btn" title="Toggle dark/light mode" aria-label="Toggle theme">🌙</button>
-      <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Open settings">⚙️</button>
     </div>
   </header>
 
