@@ -1192,7 +1192,7 @@ async function saveReorderedSection(sectionId) {
   if (!ul) return;
   const items = [...ul.querySelectorAll('li[data-link-id]')];
   const results = await Promise.all(items.map((li, idx) => {
-    const id = parseInt(li.dataset.linkId);
+    const id = li.dataset.linkId;
     const cached = linksCache.find(l => l.id === id);
     if (cached) cached.sort_order = idx;
     return sb.from('links').update({ sort_order: idx }).eq('id', id).select();
