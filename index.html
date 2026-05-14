@@ -1191,12 +1191,80 @@ async function saveReorderedSection(sectionId) {
   const ul = document.getElementById(`links-${sectionId}`);
   if (!ul) return;
   const items = [...ul.querySelectorAll('li[data-link-id]')];
-  await Promise.all(items.map((li, idx) => {
+  const results = await Promise.all(items.map((li, idx) => {
     const id = parseInt(li.dataset.linkId);
     const cached = linksCache.find(l => l.id === id);
     if (cached) cached.sort_order = idx;
-    return sb.from('links').update({ sort_order: idx }).eq('id', id);
+    return sb.from('links').update({ sort_order: idx }).eq('id', id).select();
   }));
+  const errored  = results.filter(r => r.error);
+  const silenced = results.filter(r => !r.error && (!r.data || r.data.length === 0));
+  if (errored.length) {
+    console.error('saveReorderedSection errors:', errored.map(r => r.error));
+    showToast('Error saving link order');
+  } else if (silenced.length) {
+    console.warn('saveReorderedSection: Supabase RLS blocked update — no rows written');
+    showToast('Order not saved: Supabase RLS policy needed');
+  }
+}
+
+// ══════════════════════════════════════════
+//  Link Touch Drag (within section, mobile)
+// ══════════════════════════════════════════
+function setupAllLinkTouchDnD() {
+  let src = null, clone = null, activeUl = null;
+
+  document.addEventListener('touchstart', e => {
+    if (!editMode) return;
+    const handle = e.target.closest('.link-row-drag');
+    if (!handle) return;
+    src = handle.closest('li.link-item');
+    if (!src) return;
+    activeUl = src.closest('ul.links');
+    if (!activeUl) return;
+    const rect = src.getBoundingClientRect();
+    clone = src.cloneNode(true);
+    Object.assign(clone.style, {
+      position: 'fixed', width: rect.width + 'px', opacity: '0.8',
+      pointerEvents: 'none', zIndex: '9999', listStyle: 'none',
+      left: rect.left + 'px', top: rect.top + 'px', transition: 'none',
+    });
+    document.body.appendChild(clone);
+    src.style.opacity = '0.35';
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchmove', e => {
+    if (!src || !clone) return;
+    const t = e.touches[0];
+    clone.style.left = (t.clientX - clone.offsetWidth / 2) + 'px';
+    clone.style.top  = (t.clientY - clone.offsetHeight / 2) + 'px';
+    clone.style.display = 'none';
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    clone.style.display = '';
+    activeUl.querySelectorAll('li.link-item').forEach(l => l.classList.remove('link-drag-over'));
+    const over = el && el.closest('li.link-item');
+    if (over && over !== src && activeUl.contains(over)) over.classList.add('link-drag-over');
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchend', e => {
+    if (!src) return;
+    const t = e.changedTouches[0];
+    if (clone) clone.style.display = 'none';
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    if (clone) { clone.remove(); clone = null; }
+    if (activeUl) activeUl.querySelectorAll('li.link-item').forEach(l => l.classList.remove('link-drag-over'));
+    const target = el && el.closest('li.link-item');
+    if (target && target !== src && activeUl && activeUl.contains(target)) {
+      const items = [...activeUl.children];
+      const si = items.indexOf(src), ti = items.indexOf(target);
+      activeUl.insertBefore(src, si < ti ? target.nextSibling : target);
+      saveReorderedSection(activeUl.id.replace('links-', ''));
+    }
+    src.style.opacity = '';
+    src = null; activeUl = null;
+  });
 }
 
 // ══════════════════════════════════════════
@@ -1449,6 +1517,7 @@ if ('serviceWorker' in navigator) {
   updateClock();
   fetchWeather();
   await loadLinks();
+  setupAllLinkTouchDnD();
 })();
 </script>
 </body>

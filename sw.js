@@ -1,4 +1,4 @@
-const CACHE = 'jordan-start-v1';
+const CACHE = 'jordan-start-v2';
 const PRECACHE = ['/', '/index.html', '/manifest.json', '/icon.svg', '/sw.js'];
 
 self.addEventListener('install', e => {
@@ -15,6 +15,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  if (e.request.url.includes('supabase.co')) return;
   e.respondWith(
     caches.match(e.request).then(cached => {
       const network = fetch(e.request).then(res => {
