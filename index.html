@@ -68,6 +68,10 @@
       --search-border: rgba(255,255,255,0.35);
       --input-bg: rgba(255,255,255,0.18);
       --input-border: rgba(255,255,255,0.35);
+      /* Tile-specific — controlled by settings sliders */
+      --tile-bg: rgba(255,255,255,0.18);
+      --tile-bg-hover: rgba(255,255,255,0.32);
+      --tile-font-size: 14px;
     }
 
     [data-theme="dark"] {
@@ -257,7 +261,7 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .card {
-      background: var(--card-bg);
+      background: var(--tile-bg);
       border: 1px solid var(--card-border);
       border-radius: 18px;
       padding: 1.5rem;
@@ -275,7 +279,7 @@
       .card:hover { transform: none !important; }
     }
     .card:not(.dragging):hover {
-      background: rgba(255,255,255,0.32);
+      background: var(--tile-bg-hover);
       border-color: rgba(255,255,255,0.55);
       transform: translateY(-2px);
       box-shadow: 0 20px 40px rgba(0,0,0,0.15);
@@ -319,7 +323,7 @@
     .link-item:hover .link-icon { opacity: 1; }
     .link-item a {
       color: var(--text-primary); text-decoration: none;
-      font-size: 1.05rem; font-weight: 400; flex: 1;
+      font-size: var(--tile-font-size); font-weight: 400; flex: 1;
       transition: color 150ms ease;
     }
     .link-item:not(.editing):hover a { color: var(--accent); }
@@ -407,7 +411,7 @@
     /* ── Weather ── */
     .weather-row { display: grid; grid-template-columns: 60% 40%; gap: 1.5rem; }
     .weather-card, .radar-card {
-      background: var(--card-bg);
+      background: var(--tile-bg);
       border: 1px solid var(--card-border);
       border-radius: 18px; padding: 1.75rem;
       -webkit-backdrop-filter: blur(28px) saturate(140%); backdrop-filter: blur(28px) saturate(140%);
@@ -577,6 +581,49 @@
     }
     .widget-row:last-child { border-bottom: none; }
 
+    /* ── Tile style controls ── */
+    .tile-alpha-slider {
+      width: 100%; margin: 6px 0 4px;
+      -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 9999px;
+      background: var(--card-border);
+      outline: none; cursor: pointer;
+    }
+    .tile-alpha-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: white;
+      border: 2px solid var(--accent);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    .tile-alpha-slider::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: white; border: 2px solid var(--accent);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    .stepper-row {
+      display: flex; justify-content: space-between; align-items: center; padding: 8px 0;
+    }
+    .stepper-controls {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .stepper-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1px solid var(--card-border);
+      background: var(--input-bg);
+      -webkit-backdrop-filter: blur(28px); backdrop-filter: blur(28px);
+      color: var(--text-primary); font-size: 1.1rem; line-height: 1;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .stepper-btn:hover { background: var(--accent); color: white; border-color: transparent; }
+    .stepper-val {
+      font-size: 0.88rem; font-weight: 500; min-width: 32px; text-align: center;
+      color: var(--text-primary);
+    }
+
     .edit-mode-btn {
       width: 100%; padding: 12px; border-radius: 12px;
       border: 1px solid var(--accent); background: var(--accent-20);
@@ -715,6 +762,24 @@
   </div>
 
   <div class="settings-section">
+    <div class="settings-section-label">Tile Style</div>
+    <div class="toggle-row">
+      <span class="toggle-label">Translucency</span>
+      <span class="stepper-val" id="tile-alpha-value">18%</span>
+    </div>
+    <input type="range" class="tile-alpha-slider" id="tile-alpha-slider"
+           min="0" max="100" value="18" step="1">
+    <div class="stepper-row">
+      <span class="toggle-label">Link font size</span>
+      <div class="stepper-controls">
+        <button class="stepper-btn" id="font-size-dec" aria-label="Decrease font size">−</button>
+        <span class="stepper-val" id="font-size-value">14px</span>
+        <button class="stepper-btn" id="font-size-inc" aria-label="Increase font size">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
     <div class="settings-section-label">Clock</div>
     <div class="toggle-row">
       <span class="toggle-label">Show Seconds</span>
@@ -839,6 +904,8 @@ const state = {
   get showRadar()   { return get('show_radar')   !== 'false'; },
   get cardOrder()   { try { return JSON.parse(get('card_order')); } catch { return null; } },
   get colorScheme() { return localStorage.getItem('jbw-color-scheme') || 'Sunset'; },
+  get tileAlpha()   { const v = localStorage.getItem('jbw-tile-alpha'); return v !== null ? parseFloat(v) : 0.18; },
+  get tileFontSize(){ const v = localStorage.getItem('jbw-tile-font-size'); return v !== null ? parseInt(v) : 14; },
 };
 
 let editMode = false;
@@ -877,6 +944,49 @@ function buildSchemeSwitcher() {
     wrap.appendChild(btn);
   });
 }
+
+// ══════════════════════════════════════════
+//  Tile Alpha
+// ══════════════════════════════════════════
+function applyTileAlpha(alpha) {
+  alpha = Math.max(0, Math.min(1, parseFloat(alpha)));
+  const hover = Math.min(alpha + 0.15, 1);
+  document.documentElement.style.setProperty('--tile-bg',       `rgba(255,255,255,${alpha.toFixed(2)})`);
+  document.documentElement.style.setProperty('--tile-bg-hover', `rgba(255,255,255,${hover.toFixed(2)})`);
+  localStorage.setItem('jbw-tile-alpha', alpha);
+  const pct = Math.round(alpha * 100);
+  document.getElementById('tile-alpha-value').textContent = pct + '%';
+  document.getElementById('tile-alpha-slider').value = pct;
+}
+
+// ══════════════════════════════════════════
+//  Tile Font Size
+// ══════════════════════════════════════════
+const FONT_SIZES = [8, 10, 12, 14, 16, 18, 20];
+
+function applyTileFontSize(size) {
+  document.documentElement.style.setProperty('--tile-font-size', size + 'px');
+  localStorage.setItem('jbw-tile-font-size', size);
+  document.getElementById('font-size-value').textContent = size + 'px';
+  document.getElementById('font-size-dec').disabled = size <= FONT_SIZES[0];
+  document.getElementById('font-size-inc').disabled = size >= FONT_SIZES[FONT_SIZES.length - 1];
+}
+
+document.getElementById('tile-alpha-slider').addEventListener('input', e => {
+  applyTileAlpha(e.target.value / 100);
+});
+
+document.getElementById('font-size-dec').addEventListener('click', () => {
+  const cur = state.tileFontSize;
+  const idx = FONT_SIZES.indexOf(cur);
+  if (idx > 0) applyTileFontSize(FONT_SIZES[idx - 1]);
+});
+
+document.getElementById('font-size-inc').addEventListener('click', () => {
+  const cur = state.tileFontSize;
+  const idx = FONT_SIZES.indexOf(cur);
+  if (idx < FONT_SIZES.length - 1) applyTileFontSize(FONT_SIZES[idx + 1]);
+});
 
 // ══════════════════════════════════════════
 //  Theme
@@ -1638,6 +1748,9 @@ if ('serviceWorker' in navigator) {
   buildSchemeSwitcher();
   applyTheme(state.theme);       // calls applyColorScheme → applyAccent; swatches must exist first
   setEngine(state.engine);
+
+  applyTileAlpha(state.tileAlpha);
+  applyTileFontSize(state.tileFontSize);
 
   document.getElementById('seconds-toggle').checked = state.showSeconds;
   document.getElementById('weather-toggle').checked = state.showWeather;
