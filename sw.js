@@ -1,4 +1,4 @@
-const CACHE = 'jordan-start-v2';
+const CACHE = 'jordan-start-v3';
 const PRECACHE = ['/', '/index.html', '/manifest.json', '/icon.svg', '/sw.js'];
 
 self.addEventListener('install', e => {
