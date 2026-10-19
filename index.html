@@ -194,6 +194,14 @@
       transition: background 100ms ease;
     }
     .suggestion-item:hover { background: var(--card-bg); }
+    .suggestion-item.active { background: var(--accent-20); }
+    .suggestion-item .sg-typed { font-weight: 400; }
+    .suggestion-item .sg-rest  { font-weight: 600; }
+    .suggestion-hint {
+      padding: 8px 24px; font-size: 0.78rem; cursor: pointer;
+      color: var(--text-secondary); border-top: 1px solid var(--card-border);
+    }
+    .suggestion-hint:hover { color: var(--text-primary); }
 
     /* ── Cards ── */
     .cards-grid {
@@ -362,7 +370,21 @@
     .link-item.link-drag-over { border-top: 2px solid var(--accent); }
 
     /* ── Weather ── */
-    .weather-row { display: grid; grid-template-columns: 60% 40%; gap: 1.5rem; }
+    /* Admin card (left, spans both rows) | forecast over radar (right) */
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1fr 3fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    .dash-grid > #admin-slot { grid-column: 1; grid-row: 1 / span 2; align-self: stretch; }
+    .dash-grid > #admin-slot > .card { height: 100%; }
+    .dash-grid > .weather-card { grid-column: 2; grid-row: 1; min-width: 0; }
+    .dash-grid > .radar-card   { grid-column: 2; grid-row: 2; min-width: 0; }
+    /* Settings can hide forecast and/or radar */
+    .dash-grid.one-widget > #admin-slot { grid-row: 1; }
+    .dash-grid.radar-only > .radar-card { grid-row: 1; }
+    #radar-iframe { height: 420px; }
     .weather-card, .radar-card {
       background: var(--tile-bg);
       border: 1px solid var(--card-border);
@@ -382,7 +404,7 @@
     }
     .weather-current { display: flex; align-items: flex-end; gap: 1.5rem; margin-bottom: 1.75rem; }
     .weather-temp { font-size: 4.5rem; font-weight: 300; line-height: 1; }
-    .weather-condition { font-size: 1.15rem; font-weight: 400; }
+    .weather-condition { font-size: 1.15rem; font-weight: 400; margin-top: 0.5rem; }
     .weather-meta { font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.2rem; }
     .forecast-grid {
       display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center;
@@ -394,7 +416,8 @@
     .forecast-day-name { font-size: 0.7rem; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
     .forecast-icon { font-size: 1.7rem; margin: 6px 0; }
     .forecast-temps { font-size: 0.82rem; }
-    .forecast-rain { font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; }
+    .forecast-rain { font-size: 0.72rem; color: #4f9de8; margin-top: 2px; white-space: nowrap; }
+    [data-theme="light"] .forecast-rain { color: #1d6fc2; }
     .weather-error { text-align: center; padding: 2rem 1rem; color: var(--text-secondary); }
     .weather-error a { color: var(--accent); text-decoration: none; display: inline-block; margin-top: 0.5rem; }
 
@@ -561,10 +584,11 @@
       color: var(--text-primary);
       padding: 11px 24px; border-radius: 9999px;
       font-size: 0.88rem; font-weight: 500; z-index: 2000;
-      transition: transform 300ms cubic-bezier(0.34,1.56,0.64,1);
+      transition: transform 300ms cubic-bezier(0.34,1.56,0.64,1), visibility 0s 300ms;
       pointer-events: none;
+      visibility: hidden;
     }
-    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.show { transform: translateX(-50%) translateY(0); visibility: visible; transition-delay: 0s; }
 
     footer {
       text-align: center; margin-top: 4rem; padding-bottom: 2rem;
@@ -574,11 +598,27 @@
     /* ── Responsive ── */
     @media (max-width: 1200px) {
       .cards-grid { grid-template-columns: repeat(2, 1fr); }
-      .weather-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 900px) {
+      .container { padding: 1.25rem 1rem; }
+      .dash-grid { grid-template-columns: minmax(0, 1fr); }
+      .dash-grid > #admin-slot,
+      .dash-grid > .weather-card,
+      .dash-grid > .radar-card,
+      .dash-grid.one-widget > #admin-slot,
+      .dash-grid.radar-only > .radar-card { grid-column: 1; grid-row: auto; }
+      .header-left h1 { font-size: clamp(2.75rem, 13vw, 4.5rem); letter-spacing: -2px; }
+      .header-left p  { font-size: 1rem; }
+      .search-container { margin-bottom: 1.75rem; }
+      .search-bar { padding: 14px 104px 14px 20px; font-size: 1rem; }
+      .engine-pill { right: 10px; padding: 4px 10px; }
+      .suggestion-item, .suggestion-hint { padding-left: 20px; padding-right: 20px; }
+      .weather-card, .radar-card { padding: 1.25rem; }
+      .weather-temp { font-size: 3.5rem; }
+      #radar-iframe { height: 360px; }
     }
     @media (max-width: 768px) {
       .cards-grid { grid-template-columns: 1fr; }
-      .weather-row { grid-template-columns: 1fr; }
       .settings-panel { width: 100%; }
       .forecast-grid { grid-template-columns: repeat(4, 1fr); }
       .forecast-day:nth-child(n+5) { display: none; }
@@ -608,7 +648,8 @@
 
   <div class="search-container">
     <div class="search-wrapper">
-      <input type="text" class="search-bar" id="search" placeholder="Search the web…" autocomplete="off" spellcheck="false">
+      <input type="text" class="search-bar" id="search" placeholder="Search the web…  ( / )" autocomplete="off" spellcheck="false"
+             role="combobox" aria-autocomplete="list" aria-controls="suggestions" aria-expanded="false">
       <div id="suggestions" role="listbox"></div>
       <button class="engine-pill" id="engine-pill" aria-label="Change search engine">Google ▾</button>
     </div>
@@ -621,7 +662,8 @@
     </div>
   </div>
 
-  <div class="weather-row" id="weather-row">
+  <div class="dash-grid" id="dash-grid">
+    <div id="admin-slot"></div>
     <div class="weather-card" id="weather-card">
       <div class="section-label">🌤 Houston, TX — Weather</div>
       <div id="weather-content"><p style="color:var(--text-secondary)">Loading…</p></div>
@@ -631,7 +673,7 @@
       <div id="radar-content">
         <iframe id="radar-iframe"
           src="https://embed.windy.com/embed2.html?lat=29.76&lon=-95.37&zoom=10&level=surface&overlay=radar&product=radar&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
-          width="100%" height="360" frameborder="0"
+          width="100%" height="420" frameborder="0"
           style="border-radius:14px;display:block;margin-top:10px;"
           title="Houston Weather Radar">
         </iframe>
@@ -749,6 +791,9 @@ const SECTIONS = [
   { id: 'work',     emoji: '🏥', title: 'Work' },
   { id: 'study',    emoji: '📚', title: 'Study' },
 ];
+
+// Pinned beside the weather widgets rather than in the reorderable grid
+const ADMIN_SECTION = { id: 'admin', emoji: '📋', title: 'Residency Admin' };
 
 const ACCENTS = [
   { name: 'Blue',   color: '#3b82f6' },
@@ -1041,56 +1086,136 @@ function setEngine(engine) {
   document.querySelectorAll('.engine-option').forEach(b => b.classList.toggle('active', b.dataset.engine === engine));
 }
 
+// Full URL, or a bare domain like "openevidence.com" / "emrap.org/corependium"
 function isUrl(s) {
-  return /^https?:\/\//i.test(s) ||
-    /^[a-zA-Z0-9]([a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}(\/\S*)?$/.test(s.trim());
+  s = s.trim();
+  return /^https?:\/\/\S+$/i.test(s) ||
+    /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(:\d+)?([/?#]\S*)?$/i.test(s);
 }
 
 function doSearch(q) {
   q = q.trim();
   if (!q) return;
-  const url = isUrl(q) ? (q.startsWith('http') ? q : 'https://' + q) : ENGINES[state.engine].url(q);
+  const url = isUrl(q) ? (/^https?:\/\//i.test(q) ? q : 'https://' + q) : ENGINES[state.engine].url(q);
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 const searchEl = document.getElementById('search');
 const suggestEl = document.getElementById('suggestions');
 let debounce;
+let suggestSeq = 0;      // bumps on every keystroke; older responses are dropped
+let activeIdx = -1;      // highlighted suggestion, -1 = none
+
+const suggestItems = () => [...suggestEl.querySelectorAll('.suggestion-item')];
+
+function closeSuggestions() {
+  suggestEl.style.display = 'none';
+  suggestEl.replaceChildren();
+  activeIdx = -1;
+  searchEl.setAttribute('aria-expanded', 'false');
+}
+
+function highlight(idx) {
+  const items = suggestItems();
+  activeIdx = idx;
+  items.forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+    el.setAttribute('aria-selected', String(i === idx));
+  });
+}
+
+function renderSuggestions(typed, items) {
+  suggestEl.replaceChildren();
+  activeIdx = -1;
+  items.slice(0, 8).forEach(s => {
+    const item = document.createElement('div');
+    item.className = 'suggestion-item';
+    item.setAttribute('role', 'option');
+    item.setAttribute('aria-selected', 'false');
+    item.dataset.q = s;
+    // Typed prefix in normal weight, completion in bold
+    const n = s.toLowerCase().startsWith(typed.toLowerCase()) ? typed.length : 0;
+    const head = document.createElement('span');
+    head.className = 'sg-typed';
+    head.textContent = s.slice(0, n);
+    const tail = document.createElement('span');
+    tail.className = 'sg-rest';
+    tail.textContent = s.slice(n);
+    item.append(head, tail);
+    suggestEl.appendChild(item);
+  });
+  const hint = document.createElement('div');
+  hint.className = 'suggestion-hint';
+  hint.textContent = `Search ${ENGINES[state.engine].label} ↵`;
+  suggestEl.appendChild(hint);
+  suggestEl.style.display = 'block';
+  searchEl.setAttribute('aria-expanded', 'true');
+}
 
 searchEl.addEventListener('input', () => {
   clearTimeout(debounce);
-  const q = searchEl.value.trim();
-  if (q.length < 2 || isUrl(q)) { suggestEl.style.display = 'none'; return; }
+  const seq = ++suggestSeq;
+  const raw = searchEl.value;
+  const q = raw.trim();
+  if (q.length < 2 || isUrl(q)) { closeSuggestions(); return; }
   debounce = setTimeout(async () => {
     try {
-      const r = await fetch(`https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(q)}`);
-      const d = await r.json();
-      const items = d[1] || [];
-      if (!items.length) { suggestEl.style.display = 'none'; return; }
-      suggestEl.innerHTML = items.slice(0,8).map(s =>
-        `<div class="suggestion-item" role="option" tabindex="0" data-q="${encodeURIComponent(s)}">${s}</div>`
-      ).join('');
-      suggestEl.style.display = 'block';
-    } catch { suggestEl.style.display = 'none'; }
+      const r = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const items = await r.json();
+      if (seq !== suggestSeq) return;
+      if (!Array.isArray(items) || !items.length) { closeSuggestions(); return; }
+      renderSuggestions(raw.trimStart(), items.filter(s => typeof s === 'string'));
+    } catch {
+      if (seq === suggestSeq) closeSuggestions();
+    }
   }, 250);
 });
 
+suggestEl.addEventListener('mousedown', e => e.preventDefault()); // keep focus in the input
 suggestEl.addEventListener('click', e => {
   const item = e.target.closest('.suggestion-item');
-  if (!item) return;
-  const q = decodeURIComponent(item.dataset.q);
+  const q = item ? item.dataset.q : e.target.closest('.suggestion-hint') ? searchEl.value : null;
+  if (q == null) return;
   searchEl.value = q;
-  suggestEl.style.display = 'none';
+  closeSuggestions();
   doSearch(q);
 });
 
 searchEl.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { suggestEl.style.display = 'none'; doSearch(searchEl.value); }
-  if (e.key === 'Escape') { searchEl.value = ''; suggestEl.style.display = 'none'; }
+  const items = suggestItems();
+  if (e.key === 'ArrowDown' && items.length) {
+    e.preventDefault();
+    highlight(activeIdx + 1 >= items.length ? 0 : activeIdx + 1);
+  } else if (e.key === 'ArrowUp' && items.length) {
+    e.preventDefault();
+    highlight(activeIdx <= 0 ? items.length - 1 : activeIdx - 1);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const q = activeIdx >= 0 && items[activeIdx] ? items[activeIdx].dataset.q : searchEl.value;
+    clearTimeout(debounce);
+    suggestSeq++;
+    closeSuggestions();
+    doSearch(q);
+  } else if (e.key === 'Escape') {
+    clearTimeout(debounce);
+    suggestSeq++;
+    closeSuggestions();
+  }
+});
+
+// "/" anywhere focuses search, unless already typing somewhere
+document.addEventListener('keydown', e => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t.closest && t.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
+  e.preventDefault();
+  searchEl.focus();
+  searchEl.select();
 });
 
 document.addEventListener('click', e => {
-  if (!e.target.closest('.search-wrapper')) suggestEl.style.display = 'none';
+  if (!e.target.closest('.search-wrapper')) closeSuggestions();
 });
 
 document.getElementById('engine-pill').addEventListener('click', () => {
@@ -1131,22 +1256,28 @@ function renderTiles() {
     const links = linksCache.filter(l => l.section === sec.id);
     grid.appendChild(buildCard(sec, links, i));
   });
+
+  const adminSlot = document.getElementById('admin-slot');
+  adminSlot.innerHTML = '';
+  const adminLinks = linksCache.filter(l => l.section === ADMIN_SECTION.id);
+  adminSlot.appendChild(buildCard(ADMIN_SECTION, adminLinks, sorted.length, { pinned: true }));
+
   setupCardDnD();
   setupTouchDnD();
 }
 
-function buildCard(sec, links, animIdx) {
+function buildCard(sec, links, animIdx, { pinned = false } = {}) {
   const card = document.createElement('div');
   card.className = 'card';
   card.dataset.tileId = sec.id;
   card.style.animationDelay = `${animIdx * 60}ms`;
-  card.draggable = true;
+  card.draggable = !pinned;
 
   const hdr = document.createElement('div');
   hdr.className = 'card-header';
   hdr.innerHTML = `
     <span class="card-title">${sec.emoji} ${sec.title}</span>
-    <span class="card-drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span>
+    ${pinned ? '' : '<span class="card-drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span>'}
   `;
 
   const ul = document.createElement('ul');
@@ -1447,7 +1578,7 @@ function setupAllLinkTouchDnD() {
 let dragSrc = null;
 
 function setupCardDnD() {
-  document.querySelectorAll('.card').forEach(card => {
+  document.querySelectorAll('#cards-grid > .card').forEach(card => {
     card.addEventListener('dragstart', e => {
       if (e.target.closest('li.link-item') || e.target.closest('.link-row-drag')) return;
       dragSrc = card;
@@ -1522,7 +1653,7 @@ function setupTouchDnD() {
     if (clone) { clone.style.display = 'none'; }
     const el = document.elementFromPoint(t.clientX, t.clientY);
     if (clone) { clone.remove(); clone = null; }
-    const target = el && el.closest('.card');
+    const target = el && el.closest('#cards-grid > .card');
     if (target && target !== src) {
       const kids = [...grid.children];
       const si = kids.indexOf(src), ti = kids.indexOf(target);
@@ -1550,22 +1681,14 @@ document.getElementById('edit-mode-btn').addEventListener('click', () => {
 //  Widget Visibility
 // ══════════════════════════════════════════
 function applyWidgets() {
-  const row = document.getElementById('weather-row');
   const wc  = document.getElementById('weather-card');
   const rc  = document.getElementById('radar-card');
   const sw  = state.showWeather, sr = state.showRadar;
   wc.style.display = sw ? '' : 'none';
   rc.style.display = sr ? '' : 'none';
-  if (!sw && !sr) {
-    row.style.display = 'none';
-    row.style.gridTemplateColumns = '';
-  } else if (!sw || !sr) {
-    row.style.display = 'grid';
-    row.style.gridTemplateColumns = '1fr';
-  } else {
-    row.style.display = '';
-    row.style.gridTemplateColumns = '';
-  }
+  const grid = document.getElementById('dash-grid');
+  grid.classList.toggle('one-widget', sw !== sr);
+  grid.classList.toggle('radar-only', sr && !sw);
 }
 
 document.getElementById('weather-toggle').addEventListener('change', e => { set('show_weather', e.target.checked); applyWidgets(); });
@@ -1584,66 +1707,81 @@ overlay.addEventListener('click', () => { panel.classList.remove('open'); overla
 // ══════════════════════════════════════════
 //  Weather
 // ══════════════════════════════════════════
+// Full WMO weather-code table: code → [icon, description]
 const WX = {
-  0: ['☀️','Clear Sky'],       1: ['🌤️','Mainly Clear'],    2: ['⛅','Partly Cloudy'],
-  3: ['☁️','Overcast'],        45:['🌫️','Foggy'],           48:['🌫️','Icy Fog'],
-  51:['🌦️','Light Drizzle'],  53:['🌦️','Drizzle'],         55:['🌧️','Heavy Drizzle'],
-  61:['🌧️','Light Rain'],     63:['🌧️','Rain'],             65:['🌧️','Heavy Rain'],
-  71:['🌨️','Light Snow'],     73:['❄️','Snow'],              75:['❄️','Heavy Snow'],
-  77:['🌨️','Snow Grains'],    80:['🌦️','Light Showers'],    81:['🌧️','Showers'],
-  82:['⛈️','Heavy Showers'],  85:['🌨️','Snow Showers'],     86:['❄️','Heavy Snow Showers'],
-  95:['⛈️','Thunderstorm'],   96:['⛈️','Thunderstorm + Hail'], 99:['⛈️','Heavy Thunderstorm'],
+  0: ['☀️','Clear sky'],
+  1: ['🌤️','Mainly clear'],        2: ['⛅','Partly cloudy'],          3: ['☁️','Overcast'],
+  45:['🌫️','Fog'],                 48:['🌫️','Freezing fog'],
+  51:['🌦️','Light drizzle'],       53:['🌦️','Drizzle'],               55:['🌦️','Heavy drizzle'],
+  56:['🧊','Light freezing drizzle'], 57:['🧊','Freezing drizzle'],
+  61:['🌧️','Light rain'],          63:['🌧️','Rain'],                  65:['🌧️','Heavy rain'],
+  66:['🧊','Light freezing rain'], 67:['🧊','Freezing rain'],
+  71:['🌨️','Light snow'],          73:['🌨️','Snow'],                  75:['❄️','Heavy snow'],
+  77:['🌨️','Snow grains'],
+  80:['🌧️','Light rain showers'],  81:['🌧️','Rain showers'],          82:['🌧️','Heavy rain showers'],
+  85:['🌨️','Light snow showers'],  86:['🌨️','Heavy snow showers'],
+  95:['⛈️','Thunderstorm'],
+  96:['⛈️','Thunderstorm with hail'], 99:['⛈️','Severe thunderstorm with hail'],
 };
 const wx = code => WX[code] || ['🌡️','Unknown'];
 
+const WEATHER_URL =
+  'https://api.open-meteo.com/v1/forecast?latitude=29.76&longitude=-95.37' +
+  '&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m' +
+  '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code' +
+  '&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/Chicago';
+
 async function fetchWeather() {
   try {
-    const r = await fetch(
-      'https://api.open-meteo.com/v1/forecast?latitude=29.76&longitude=-95.37' +
-      '&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m' +
-      '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code' +
-      '&timezone=America/Chicago'
-    );
-    if (!r.ok) throw new Error();
+    const r = await fetch(WEATHER_URL);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     renderWeather(await r.json());
   } catch {
     document.getElementById('weather-content').innerHTML = `
       <div class="weather-error">
         <div style="font-size:2rem;margin-bottom:0.75rem">🌐</div>
-        <p>Weather unavailable on this network.</p>
+        <p>Weather unavailable</p>
         <a href="https://weather.com/weather/today/l/Houston+TX+USTX0294:4:US" target="_blank" rel="noopener noreferrer">View on weather.com →</a>
       </div>`;
   }
 }
 
+// "YYYY-MM-DD" → Date at local noon. new Date("YYYY-MM-DD") is UTC midnight,
+// which is the previous evening in Houston and shifts weekday names by one.
+const localDate = ymd => new Date(ymd + 'T12:00');
+
+function localYmd(d = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 function renderWeather(d) {
   const c = d.current, dl = d.daily;
-  const tempF = Math.round(c.temperature_2m * 9/5 + 32);
   const [icon, label] = wx(c.weather_code);
-  const wind = Math.round(c.wind_speed_10m * 0.621371);
+  const today = localYmd();
 
-  const days = Array.from({length:7}, (_,i) => {
-    const day = new Date(dl.time[i] + 'T12:00:00');
-    const name = i === 0 ? 'Today' : day.toLocaleDateString('en-US', {weekday:'short'});
-    const hi = Math.round(dl.temperature_2m_max[i] * 9/5 + 32);
-    const lo = Math.round(dl.temperature_2m_min[i] * 9/5 + 32);
+  const days = dl.time.slice(0, 7).map((ymd, i) => {
+    const name = ymd === today ? 'Today' : localDate(ymd).toLocaleDateString('en-US', {weekday:'short'});
+    const hi = Math.round(dl.temperature_2m_max[i]);
+    const lo = Math.round(dl.temperature_2m_min[i]);
     const rain = dl.precipitation_probability_max[i];
-    const [fi] = wx(dl.weather_code[i]);
+    const rainText = rain == null ? '💧 —' : `💧 ${Math.round(rain)}%`;
+    const [fi, fl] = wx(dl.weather_code[i]);
     return `<div class="forecast-day">
       <div class="forecast-day-name">${name}</div>
-      <div class="forecast-icon">${fi}</div>
+      <div class="forecast-icon" title="${fl}">${fi}</div>
       <div class="forecast-temps"><strong>${hi}°</strong> / ${lo}°</div>
-      <div class="forecast-rain">${rain}%</div>
+      <div class="forecast-rain" title="Chance of rain">${rainText}</div>
     </div>`;
   }).join('');
 
   document.getElementById('weather-content').innerHTML = `
     <div class="weather-current">
-      <div class="weather-temp">${tempF}°F</div>
       <div>
-        <div class="weather-condition">${icon} ${label}</div>
-        <div class="weather-meta">${c.relative_humidity_2m}% humidity · ${wind} mph wind</div>
+        <div class="weather-temp">${Math.round(c.temperature_2m)}°F</div>
+        <div class="weather-condition" id="weather-condition">${icon} ${label}</div>
       </div>
+      <div class="weather-meta">${Math.round(c.relative_humidity_2m)}% humidity · ${Math.round(c.wind_speed_10m)} mph wind</div>
     </div>
     <div class="forecast-grid">${days}</div>`;
 }

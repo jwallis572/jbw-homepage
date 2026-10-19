@@ -1,0 +1,13 @@
+{
+  "name": "jbw-homepage",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "test": "playwright test",
+    "test:preview": "node scripts/test-preview.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

@@ -1,0 +1,7 @@
+tests/
+test-results/
+playwright-report/
+scripts/
+playwright.config.js
+.github/
+.claude/

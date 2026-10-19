@@ -1,4 +1,4 @@
-const CACHE = 'jordan-start-v3';
+const CACHE = 'jordan-start-v4';
 const PRECACHE = ['/', '/index.html', '/manifest.json', '/icon.svg', '/sw.js'];
 
 self.addEventListener('install', e => {
@@ -15,7 +15,9 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  if (e.request.url.includes('supabase.co')) return;
+  const url = new URL(e.request.url);
+  // Only cache the app shell; live data (weather, suggestions, Supabase) always hits the network
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
   e.respondWith(
     caches.match(e.request).then(cached => {
       const network = fetch(e.request).then(res => {
