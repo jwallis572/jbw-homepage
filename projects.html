@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Projects</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="timeline.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0a; --card: #161618; --card-2: #1c1c1f; --line: #27272a; --line-soft: #1f1f23;
+      --text: #f0f0f0; --muted: #a1a1aa; --soft: #d4d4d8; --accent: #60a5fa; --accent-ink: #0a0a0a;
+      --red: #f87171; --red-soft: #fca5a5; --amber: #fcd34d; --input: #0f0f11;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      background: var(--bg); color: var(--text); min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    a { color: #93c5fd; } a:hover { color: #bfdbfe; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+    /* ── Buttons & inputs ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+      padding: 10px 18px; border-radius: 9999px; border: 1px solid #3f3f46; background: var(--card); font-size: 14px;
+    }
+    .btn:hover { border-color: #52525b; }
+    .btn-primary { background: var(--text); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+    .btn-primary:hover { background: #fff; }
+    .btn-danger { color: var(--red-soft); border-color: #7f1d1d; }
+    .btn-ghost { background: transparent; border-color: transparent; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .icon-btn { min-width: 44px; padding: 10px; }
+    .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+    .field input, .field select, .field textarea, .input {
+      background: var(--input); border: 1px solid #3f3f46; border-radius: 12px; padding: 10px 12px; min-height: 44px;
+      color: var(--text); font-size: 14px; width: 100%; color-scheme: dark;
+    }
+    .field textarea { min-height: 90px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus, .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(96,165,250,.2); }
+    .check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: var(--soft); }
+    .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── PIN screen ── */
+    .pin-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .pin-card { width: 100%; max-width: 380px; background: var(--card); border-radius: 26px; padding: 32px 28px 22px; text-align: center; }
+    .pin-card h1 { margin: 0 0 6px; font-size: 24px; font-weight: 500; }
+    .pin-sub { margin: 0 0 22px; color: var(--muted); font-size: 14px; }
+    .pin-boxes { display: flex; gap: 12px; justify-content: center; }
+    .pin-box {
+      width: 56px; height: 64px; border-radius: 14px; text-align: center; font-size: 1.7rem;
+      background: var(--input); border: 1px solid #3f3f46; color: var(--text);
+    }
+    .pin-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(96,165,250,.2); }
+    .pin-box:disabled { opacity: .4; }
+    .pin-msg { min-height: 1.4em; margin: 16px 0 8px; font-size: 14px; color: var(--red-soft); }
+    .pin-msg.info { color: var(--muted); }
+    .pin-actions { display: flex; justify-content: space-between; align-items: center; }
+    .link-btn { background: none; border: none; color: var(--accent); min-height: 44px; padding: 0 4px; font-size: 14px; }
+
+    /* ── Dashboard layout ── */
+    .wrap { max-width: 1360px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 24px; }
+    .topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+    .topbar-left { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .home-link { display: flex; align-items: center; gap: 6px; text-decoration: none; font-size: 15px; min-height: 44px; }
+    .topbar h1 { margin: 0; font-size: 40px; font-weight: 300; letter-spacing: -1px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: relative; }
+    .tabs { display: flex; background: var(--card); border-radius: 9999px; padding: 4px; gap: 4px; }
+    .tab { border: none; border-radius: 9999px; padding: 10px 18px; min-height: 44px; font-size: 14px; background: transparent; color: var(--soft); }
+    .tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+    .tab:disabled { opacity: .45; cursor: not-allowed; }
+    .filter-select { background: var(--card); border: 1px solid #3f3f46; border-radius: 9999px; padding: 10px 16px; min-height: 44px; font-size: 14px; }
+    .menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; background: var(--card-2); border: 1px solid var(--line);
+      border-radius: 16px; padding: 6px; min-width: 220px; box-shadow: 0 20px 45px rgba(0,0,0,.5); display: flex; flex-direction: column; }
+    .menu button { background: none; border: none; text-align: left; padding: 12px 14px; border-radius: 10px; min-height: 44px; font-size: 14px; }
+    .menu button:hover, .menu button:focus-visible { background: #27272a; }
+    .chip-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
+    .chip { display: inline-flex; align-items: center; gap: 6px; background: #27272a; color: var(--text); border: none; border-radius: 9999px; padding: 6px 12px; min-height: 32px; font-size: 13px; }
+
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+    .kpi { background: var(--card); border-radius: 20px; padding: 20px 22px; border: none; text-align: left; color: var(--text); }
+    .kpi:hover { background: var(--card-2); }
+    .kpi[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
+    .kpi-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .kpi-value { font-size: 40px; font-weight: 300; margin-top: 6px; }
+    .kpi.alert { box-shadow: inset 0 0 0 1px #7f1d1d; }
+    .kpi.alert[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--red); }
+    .kpi.alert .kpi-label, .kpi.alert .kpi-value { color: var(--red-soft); }
+    .kpi.warn .kpi-value { color: var(--amber); }
+
+    .main-row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+    .card { background: var(--card); border-radius: 26px; padding: 24px; }
+    .card h2 { margin: 0; font-size: 22px; font-weight: 500; }
+    .timeline-card { flex: 999 1 640px; min-width: 0; }
+    .sidebar { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+    .card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }
+    .legend span { display: flex; align-items: center; gap: 6px; }
+    .lg-ms { width: 10px; height: 10px; background: #f0f0f0; transform: rotate(45deg); display: inline-block; }
+    .lg-today { width: 2px; height: 14px; background: var(--accent); display: inline-block; }
+    .lg-conf { width: 0; height: 14px; border-left: 2px dashed #a78bfa; display: inline-block; }
+
+    .win-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+    .seg { display: flex; flex-wrap: wrap; background: var(--input); border-radius: 18px; padding: 3px; gap: 2px; }
+    .seg button { border: none; background: transparent; border-radius: 9999px; padding: 6px 11px; min-height: 36px; min-width: 44px; font-size: 13px; color: var(--soft); white-space: nowrap; }
+    .seg button[aria-pressed="true"] { background: #3f3f46; color: var(--text); }
+    .stepper { display: inline-flex; align-items: center; gap: 4px; }
+    .stepper button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #3f3f46; background: var(--input); }
+    .stepper output { min-width: 22px; text-align: center; color: var(--text); }
+    .range { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }
+    .range input { background: var(--input); border: 1px solid #3f3f46; border-radius: 10px; padding: 6px 8px; min-height: 36px; color-scheme: dark; min-width: 0; max-width: 150px; }
+    .small-btn { min-height: 36px; padding: 6px 12px; border-radius: 9999px; border: 1px solid #3f3f46; background: var(--input); font-size: 13px; }
+    .unsaved { color: var(--amber); }
+    .tl-scroll { overflow-x: auto; touch-action: pan-y; }
+    .tl-scroll.dragging { cursor: grabbing; }
+
+    .side-list { display: flex; flex-direction: column; gap: 4px; }
+    .side-item { display: flex; gap: 14px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: none; border: none; text-align: left; width: 100%; }
+    .side-item:hover { background: #1f1f23; }
+    .side-item.overdue { background: rgba(248,113,113,.1); }
+    .date-box { width: 46px; flex-shrink: 0; text-align: center; }
+    .date-box .m { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .date-box .d { font-size: 20px; }
+    .overdue .date-box .m, .overdue .date-box .d, .overdue .side-sub { color: var(--red-soft); }
+    .side-title { font-size: 14px; }
+    .side-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .side-sub.warn { color: var(--amber); }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: #27272a; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--soft); flex-shrink: 0; }
+    .empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; font-weight: 500; padding: 10px 12px; }
+    th:first-child, td:first-child { padding-left: 0; }
+    td { padding: 14px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover td { background: #1a1a1d; }
+    .pill { font-size: 12px; padding: 4px 10px; border-radius: 9999px; white-space: nowrap; display: inline-block; }
+    .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 8px; vertical-align: 0; }
+    .muted { color: var(--muted); }
+    .warn-text { color: var(--amber); }
+    .archived-tag { font-size: 11px; color: var(--muted); border: 1px solid #3f3f46; border-radius: 6px; padding: 1px 6px; margin-left: 8px; }
+
+    /* ── Drawer & modals ── */
+    .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 40; }
+    .drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); z-index: 50; background: var(--card);
+      border-left: 1px solid var(--line); display: flex; flex-direction: column; box-shadow: -20px 0 45px rgba(0,0,0,.45);
+    }
+    .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+    .drawer-head h2 { margin: 0; font-size: 20px; font-weight: 500; }
+    .drawer-body { padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+    .drawer-foot { padding: 14px 20px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .section-label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 8px; }
+    .ms-row, .link-row { display: grid; gap: 8px; align-items: center; }
+    .ms-row { grid-template-columns: 44px 1fr 150px 44px; }
+    .link-row { grid-template-columns: 1fr 1.6fr 44px; }
+    .ms-row input[type="checkbox"] { width: 20px; height: 20px; justify-self: center; accent-color: var(--accent); }
+    .ms-row.done .input:first-of-type { text-decoration: line-through; color: var(--muted); }
+    .modal {
+      position: fixed; z-index: 60; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: min(640px, calc(100% - 32px)); max-height: calc(100vh - 32px); overflow-y: auto;
+      background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 22px; box-shadow: 0 30px 60px rgba(0,0,0,.6);
+    }
+    .modal h2 { margin: 0 0 14px; font-size: 20px; font-weight: 500; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .row-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 12px; background: var(--input); flex-wrap: wrap; }
+    .row-item .grow { flex: 1; min-width: 140px; }
+    .presets { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .presets button { width: 32px; height: 32px; border-radius: 9px; border: 2px solid transparent; }
+    .presets button[aria-pressed="true"] { border-color: #fff; }
+    .form-box { border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(120px); z-index: 80;
+      background: var(--card-2); border: 1px solid var(--line); padding: 11px 22px; border-radius: 9999px; font-size: 14px;
+      transition: transform .25s ease, visibility 0s .25s; pointer-events: none; visibility: hidden;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); visibility: visible; transition-delay: 0s; }
+
+    @media (max-width: 760px) {
+      .wrap { padding: 20px 16px 48px; gap: 18px; }
+      .topbar h1 { font-size: 32px; }
+      .kpis { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .kpi { padding: 16px; } .kpi-value { font-size: 32px; }
+      .card { padding: 18px; border-radius: 20px; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .drawer { width: 100%; border-left: none; }
+      .ms-row { grid-template-columns: 44px 1fr 44px; }
+      .ms-row input[type="date"] { grid-column: 2 / 3; }
+      .link-row { grid-template-columns: 1fr 44px; }
+      .link-row input:nth-child(2) { grid-column: 1 / 2; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- PIN screen (always first; the session lives only in this tab's memory) -->
+<main class="pin-screen" id="pin-screen">
+  <div class="pin-card" role="dialog" aria-labelledby="pin-title">
+    <h1 id="pin-title">Projects</h1>
+    <p class="pin-sub" id="pin-sub">Enter your 4-digit PIN.</p>
+    <div class="pin-boxes" id="pin-boxes">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="PIN digit 1">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="PIN digit 2">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="PIN digit 3">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="PIN digit 4">
+    </div>
+    <p class="pin-msg" id="pin-msg" role="alert"></p>
+    <div class="pin-actions">
+      <button class="link-btn" id="pin-forgot" type="button">Forgot PIN?</button>
+      <a class="link-btn" href="/" style="display:inline-flex;align-items:center;text-decoration:none">Home</a>
+    </div>
+  </div>
+</main>
+
+<!-- Dashboard -->
+<div id="app" hidden>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="topbar-left">
+        <a class="home-link" href="/"><span aria-hidden="true">‹</span><span>Home</span></a>
+        <h1>Projects</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="tabs" role="tablist" aria-label="View">
+          <button class="tab" role="tab" id="tab-timeline" aria-selected="true" type="button">Timeline</button>
+          <button class="tab" role="tab" id="tab-board" aria-selected="false" type="button" disabled title="Coming later">Board</button>
+          <button class="tab" role="tab" id="tab-list" aria-selected="false" type="button">List</button>
+        </div>
+        <label class="sr-only" for="cat-filter">Filter by category</label>
+        <select class="filter-select" id="cat-filter"></select>
+        <button class="btn btn-primary" id="new-project" type="button"><span aria-hidden="true">+</span>New project</button>
+        <button class="btn" id="lock-btn" type="button">Lock</button>
+        <button class="btn icon-btn" id="more-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">⋯</button>
+        <div class="menu" id="more-menu" role="menu" hidden>
+          <button role="menuitem" type="button" id="menu-categories">Manage categories</button>
+          <button role="menuitem" type="button" id="menu-deadlines">Deadlines &amp; events</button>
+          <button role="menuitem" type="button" id="menu-archived"></button>
+          <button role="menuitem" type="button" id="menu-export">Export data</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chip-row" id="chip-row" hidden></div>
+
+    <section class="kpis" id="kpis" aria-label="Summary"></section>
+
+    <div class="main-row" id="timeline-row">
+      <section class="card timeline-card" aria-labelledby="timeline-h">
+        <div class="card-head">
+          <h2 id="timeline-h">Timeline</h2>
+          <div class="legend">
+            <span><span class="lg-ms"></span>Milestone</span>
+            <span><span class="lg-today"></span>Today</span>
+            <span><span class="lg-conf"></span>Conference deadline</span>
+          </div>
+        </div>
+        <div class="win-controls" id="win-controls"></div>
+        <div class="tl-scroll" id="timeline"></div>
+      </section>
+      <aside class="sidebar">
+        <section class="card" aria-labelledby="next-h">
+          <h2 id="next-h" style="font-size:20px;margin-bottom:16px">Next 30 days</h2>
+          <div class="side-list" id="next-list"></div>
+        </section>
+        <section class="card" aria-labelledby="wait-h">
+          <h2 id="wait-h" style="font-size:20px;margin-bottom:16px">Waiting on</h2>
+          <div class="side-list" id="wait-list"></div>
+        </section>
+      </aside>
+    </div>
+
+    <section class="card" aria-labelledby="list-h">
+      <div class="card-head">
+        <h2 id="list-h">All projects</h2>
+        <span class="muted" style="font-size:13px">Click a row to open details and milestones</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th scope="col">Project</th><th scope="col">Category</th><th scope="col">Status</th><th scope="col">Next action</th>
+            <th scope="col">Role</th><th scope="col">Links</th><th scope="col">Updated</th>
+          </tr></thead>
+          <tbody id="project-rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden></aside>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+const T = window.JBWTimeline;
+const IDLE_MS = 30 * 60 * 1000;
+const COLORS = ['#60a5fa', '#fbbf24', '#a78bfa', '#2dd4bf', '#f87171', '#f472b6', '#4ade80', '#fb923c'];
+
+// ══════════════════════════════════════════
+//  Small helpers (all text goes in as textContent, never HTML)
+// ══════════════════════════════════════════
+const $ = id => document.getElementById(id);
+function h(tag, props, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else if (k === 'style') Object.assign(n.style, v);
+    else if (k.startsWith('on') && typeof v === 'function') n.addEventListener(k.slice(2), v);
+    else if (['value', 'checked', 'disabled', 'selected', 'hidden'].includes(k)) n[k] = v;
+    else n.setAttribute(k, v === true ? '' : String(v));
+  }
+  for (const c of kids.flat()) if (c !== null && c !== undefined && c !== false) n.append(c instanceof Node ? c : String(c));
+  return n;
+}
+const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+const todayStr = () => T.ymd(today());
+const parse = T.parseDay;
+const daysBetween = (a, b) => Math.round((b - a) / 86400000);
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmtDate = s => { const d = parse(s); return d ? `${MON[d.getMonth()]} ${d.getDate()}` : ''; };
+function relDays(iso) {
+  if (!iso) return '';
+  const n = daysBetween(parse(iso.slice(0, 10)), today());
+  if (n <= 0) return 'Today';
+  if (n === 1) return 'Yesterday';
+  if (n < 14) return `${n} days ago`;
+  if (n < 60) return `${Math.round(n / 7)} weeks ago`;
+  return `${Math.round(n / 30)} months ago`;
+}
+const initials = s => (s || '?').replace(/^(dr|prof)\.?\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+const isHttps = u => /^https:\/\//i.test(u || '');
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ══════════════════════════════════════════
+//  Session: token in memory only; 30 min idle or Lock clears it
+// ══════════════════════════════════════════
+let token = null, idleTimer;
+
+function touch() {
+  clearTimeout(idleTimer);
+  if (token) idleTimer = setTimeout(() => lock('Locked after 30 minutes idle.'), IDLE_MS);
+}
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { if (token) touch(); }));
+
+async function call(name, body) {
+  let r;
+  try {
+    r = await fetch(`/api/${name}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token && name !== 'auth' && { Authorization: `Bearer ${token}` }) },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { ok: false, status: 0, data: { message: 'Could not reach the server.' } };
+  }
+  const data = await r.json().catch(() => ({}));
+  if (name !== 'auth' && token) {
+    if (data.token) { token = data.token; touch(); }
+    if (r.status === 401) { lock('Session expired. Enter your PIN again.'); }
+  }
+  return { ok: r.ok, status: r.status, data };
+}
+
+/** Dashboard API call; throws with the server's message so callers can toast it. */
+async function api(action, payload = {}) {
+  const r = await call('projects', { action, ...payload });
+  if (!r.ok) throw new Error(r.data.message || 'Something went wrong.');
+  return r.data;
+}
+
+// ══════════════════════════════════════════
+//  PIN screen: unlock / set up / reset-link landing
+// ══════════════════════════════════════════
+const pinBoxes = [...document.querySelectorAll('#pin-boxes .pin-box')];
+const resetToken = new URLSearchParams(location.search).get('reset');
+let pinMode = 'unlock', firstPin = null, pinBusy = false;
+
+function pinUi({ title, sub, msg = '', info = false, disabled = false, forgot = 'Forgot PIN?' }) {
+  $('pin-title').textContent = title;
+  $('pin-sub').textContent = sub;
+  $('pin-msg').textContent = msg;
+  $('pin-msg').classList.toggle('info', info);
+  $('pin-forgot').textContent = forgot;
+  $('pin-forgot').hidden = !forgot;
+  pinBoxes.forEach(b => { b.value = ''; b.disabled = disabled; });
+  if (!disabled) pinBoxes[0].focus();
+}
+
+async function showPin(msg, info) {
+  $('app').hidden = true;
+  $('pin-screen').hidden = false;
+  if (resetToken && pinMode !== 'unlock') {
+    pinMode = 'reset1';
+    return pinUi({ title: 'Set a new PIN', sub: 'Choose a 4-digit PIN.', forgot: '' });
+  }
+  pinMode = 'unlock';
+  pinUi({ title: 'Projects', sub: 'Enter your 4-digit PIN.', msg, info });
+  const { ok, data } = await call('auth', { action: 'status' });
+  if (!ok || pinMode !== 'unlock') return;
+  if (!data.configured) {
+    pinMode = 'setup';
+    pinUi({ title: 'Set up PIN', sub: 'No PIN yet. We will email you a link to set one.', disabled: true, forgot: 'Set up PIN' });
+  } else if (data.locked) {
+    pinUi({
+      title: 'Projects', sub: 'Too many wrong PINs.', disabled: true,
+      msg: data.hard ? 'Locked. Use the reset link sent to your email.' : `Locked for ${data.minutesLeft} min. Check your email for a reset link.`,
+    });
+  }
+}
+
+async function submitPin() {
+  if (pinBusy) return;
+  const pin = pinBoxes.map(b => b.value).join('');
+  if (!/^\d{4}$/.test(pin)) return;
+  pinBusy = true;
+  try {
+    if (pinMode === 'reset1') {
+      firstPin = pin;
+      pinMode = 'reset2';
+      return pinUi({ title: 'Set a new PIN', sub: 'Enter the same PIN again.', forgot: '' });
+    }
+    if (pinMode === 'reset2') {
+      if (pin !== firstPin) {
+        pinMode = 'reset1';
+        return pinUi({ title: 'Set a new PIN', sub: 'Choose a 4-digit PIN.', msg: "Those PINs didn't match. Try again.", forgot: '' });
+      }
+      const { ok, data } = await call('auth', { action: 'reset', token: resetToken, pin });
+      history.replaceState(null, '', location.pathname);
+      pinMode = 'unlock';
+      if (ok) return pinUi({ title: 'Projects', sub: 'Enter your 4-digit PIN.', msg: 'PIN saved. Enter it to unlock.', info: true });
+      return pinUi({ title: 'Projects', sub: 'Enter your 4-digit PIN.', msg: data.message || 'That reset link did not work.' });
+    }
+    const { ok, status, data } = await call('auth', { action: 'unlock', pin });
+    if (ok && data.token) return startSession(data.token);
+    pinUi({ title: 'Projects', sub: 'Enter your 4-digit PIN.', msg: data.message || 'Something went wrong. Try again.', disabled: status === 423 || status === 409 });
+  } finally {
+    pinBusy = false;
+  }
+}
+
+pinBoxes.forEach((box, i) => {
+  box.addEventListener('input', () => {
+    box.value = box.value.replace(/\D/g, '').slice(-1);
+    if (box.value && i < 3) pinBoxes[i + 1].focus();
+    if (pinBoxes.every(b => b.value)) submitPin();
+  });
+  box.addEventListener('keydown', e => { if (e.key === 'Backspace' && !box.value && i > 0) pinBoxes[i - 1].focus(); });
+  box.addEventListener('paste', e => {
+    const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 4);
+    if (!digits) return;
+    e.preventDefault();
+    pinBoxes.forEach((b, j) => { b.value = digits[j] || ''; });
+    pinBoxes[Math.min(digits.length, 3)].focus();
+    if (digits.length === 4) submitPin();
+  });
+});
+$('pin-forgot').addEventListener('click', async () => {
+  await call('auth', { action: 'request-reset' });
+  $('pin-msg').textContent = 'If a PIN email is set up, a link is on its way. It expires in 30 minutes.';
+  $('pin-msg').classList.add('info');
+});
+
+// ══════════════════════════════════════════
+//  Data + derived numbers
+// ══════════════════════════════════════════
+let db = null;
+let winPrefs = null; // the window being viewed; may differ from the saved default
+let view = 'timeline', catFilter = 'all', kpiFilter = null, showArchived = false;
+
+const catById = id => db.categories.find(c => c.id === id);
+function statusesFor(cat) {
+  if (!cat) return [];
+  return cat.pipeline === 'custom' ? (cat.statuses || []) : (T.PIPELINES[cat.pipeline] || []);
+}
+const doneStatus = cat => { const s = statusesFor(cat); return s[s.length - 1]; };
+const milestonesOf = id => db.milestones.filter(m => m.project_id === id).sort((a, b) => a.due_date.localeCompare(b.due_date));
+
+function isActive(p) {
+  if (p.archived) return false;
+  const cat = catById(p.category_id);
+  if (!cat || cat.pipeline === 'none') return !p.end_date || p.end_date >= todayStr();
+  return p.status !== doneStatus(cat);
+}
+const isStale = p => isActive(p) && daysBetween(parse((p.updated_at || p.created_at).slice(0, 10)), today()) >= 14;
+
+function metrics() {
+  const t = todayStr(), in30 = T.ymd(new Date(today().getTime() + 30 * 86400000));
+  const live = db.projects.filter(p => !p.archived);
+  const liveIds = new Set(live.map(p => p.id));
+  const open = db.milestones.filter(m => !m.done && liveIds.has(m.project_id));
+  const overdue = open.filter(m => m.due_date < t);
+  const soonMs = open.filter(m => m.due_date >= t && m.due_date <= in30);
+  const soonDl = db.deadlines.filter(d => d.date >= t && d.date <= in30);
+  return {
+    active: live.filter(isActive),
+    overdue, soonMs, soonDl,
+    waiting: live.filter(p => p.waiting_on),
+    stale: live.filter(isStale),
+  };
+}
+
+function visibleProjects() {
+  const m = metrics();
+  let list = db.projects.filter(p => showArchived || !p.archived);
+  if (catFilter !== 'all') list = list.filter(p => p.category_id === catFilter);
+  const byIds = ids => { const s = new Set(ids); return list.filter(p => s.has(p.id)); };
+  if (kpiFilter === 'active') list = byIds(m.active.map(p => p.id));
+  if (kpiFilter === 'due') list = byIds(m.soonMs.map(x => x.project_id));
+  if (kpiFilter === 'overdue') list = byIds(m.overdue.map(x => x.project_id));
+  if (kpiFilter === 'waiting') list = byIds(m.waiting.map(p => p.id));
+  if (kpiFilter === 'stale') list = byIds(m.stale.map(p => p.id));
+  return list;
+}
+
+async function loadData() {
+  try {
+    db = await api('load');
+  } catch (e) {
+    if (token) toast(e.message);
+    return;
+  }
+  winPrefs = { ...T.DEFAULT_PREFS, ...(db.timeline_prefs || {}) };
+  renderAll();
+}
+
+// ══════════════════════════════════════════
+//  Rendering
+// ══════════════════════════════════════════
+function renderAll() {
+  if (!db) return;
+  renderFilters();
+  renderKpis();
+  renderTimeline();
+  renderSidebar();
+  renderTable();
+  $('timeline-row').hidden = view !== 'timeline';
+  $('tab-timeline').setAttribute('aria-selected', String(view === 'timeline'));
+  $('tab-list').setAttribute('aria-selected', String(view === 'list'));
+}
+
+function renderFilters() {
+  const sel = $('cat-filter');
+  sel.replaceChildren(h('option', { value: 'all', text: 'All categories' }),
+    ...db.categories.map(c => h('option', { value: c.id, text: c.name })));
+  sel.value = db.categories.some(c => c.id === catFilter) ? catFilter : 'all';
+  $('menu-archived').textContent = showArchived ? 'Hide archived projects' : 'Show archived projects';
+  const chips = $('chip-row');
+  const labels = { active: 'Active projects', due: 'Due next 30 days', overdue: 'Overdue', waiting: 'Waiting on others', stale: 'Stale (14+ days)' };
+  chips.replaceChildren();
+  if (kpiFilter) chips.append('Showing:', h('button', { class: 'chip', type: 'button', 'aria-label': `Clear filter ${labels[kpiFilter]}`, onclick: () => { kpiFilter = null; renderAll(); } }, labels[kpiFilter], h('span', { 'aria-hidden': 'true', text: '×' })));
+  if (showArchived) chips.append(h('span', { class: 'chip', text: 'Including archived' }));
+  chips.hidden = !chips.childNodes.length;
+}
+
+function renderKpis() {
+  const m = metrics();
+  const items = [
+    ['active', 'Active projects', m.active.length, ''],
+    ['due', 'Due next 30 days', m.soonMs.length + m.soonDl.length, ''],
+    ['overdue', 'Overdue', m.overdue.length, m.overdue.length ? 'alert' : ''],
+    ['waiting', 'Waiting on others', m.waiting.length, ''],
+    ['stale', 'Stale (14+ days)', m.stale.length, m.stale.length ? 'warn' : ''],
+  ];
+  $('kpis').replaceChildren(...items.map(([key, label, n, cls]) => h('button', {
+    class: `kpi ${cls}`, type: 'button', 'aria-pressed': String(kpiFilter === key), 'data-kpi': key,
+    onclick: () => { kpiFilter = kpiFilter === key ? null : key; renderAll(); },
+  }, h('div', { class: 'kpi-label', text: label }), h('div', { class: 'kpi-value', text: String(n) }))));
+}
+
+function timelineData(list) {
+  const t = todayStr();
+  return {
+    projects: list.map(p => {
+      const cat = catById(p.category_id);
+      return {
+        id: p.id, title: p.title,
+        subtitle: [cat && cat.name, p.venue].filter(Boolean).join(' · '),
+        color: cat ? cat.color : '#a1a1aa',
+        status: p.status, start: p.start_date, end: p.end_date, created: (p.created_at || '').slice(0, 10),
+        stale: isStale(p),
+        milestones: milestonesOf(p.id).map(m => ({ date: m.due_date, done: m.done, name: `${m.name} · ${fmtDate(m.due_date)}${!m.done && m.due_date < t ? ' (overdue)' : ''}` })),
+      };
+    }),
+    deadlines: db.deadlines.filter(d => d.show_on_timeline && (catFilter === 'all' || !d.category_id || d.category_id === catFilter))
+      .map(d => ({ name: d.name, date: d.date, kind: d.kind })).sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
+function currentWindow() { return T.computeWindow(winPrefs, today()); }
+const savedPrefs = () => ({ ...T.DEFAULT_PREFS, ...(db.timeline_prefs || {}) });
+const samePrefs = (a, b) => ['mode', 'months_back', 'months_ahead', 'fixed_start', 'fixed_end'].every(k => (a[k] ?? null) === (b[k] ?? null));
+
+function renderTimeline() {
+  const win = currentWindow();
+  T.render($('timeline'), timelineData(visibleProjects()), win, today(), {
+    onProjectClick: id => { if (!suppressClick) openDrawer(id); },
+    nameWidth: window.innerWidth < 600 ? 140 : 230,
+    emptyText: db.projects.length ? 'No projects match' : 'No projects yet',
+  });
+  renderWindowControls(win);
+}
+
+function renderWindowControls(win) {
+  const setPrefs = p => { winPrefs = p; renderTimeline(); };
+  const back = winPrefs.mode === 'rolling' ? winPrefs.months_back : null;
+  const monthVal = d => T.ymd(d).slice(0, 7);
+  const startIn = h('input', { type: 'month', value: monthVal(win.start), 'aria-label': 'Custom start month', id: 'range-start' });
+  const endIn = h('input', { type: 'month', value: monthVal(T.addMonths(win.end, -1)), 'aria-label': 'Custom end month', id: 'range-end' });
+  const unsaved = !samePrefs(winPrefs, savedPrefs());
+  $('win-controls').replaceChildren(
+    h('div', { class: 'seg', role: 'group', 'aria-label': 'Window length' },
+      T.PRESETS.map(n => h('button', {
+        type: 'button', 'aria-pressed': String(win.months === n), 'data-preset': String(n), text: `${n} mo`,
+        onclick: () => setPrefs(T.presetPrefs(winPrefs, n)),
+      }))),
+    h('span', { class: 'stepper', role: 'group', 'aria-label': 'Months back' },
+      'Back',
+      h('button', { type: 'button', 'aria-label': 'Fewer months back', disabled: back === 0, onclick: () => setPrefs({ ...T.DEFAULT_PREFS, months_back: Math.max(0, (back ?? 1) - 1), months_ahead: winPrefs.mode === 'rolling' ? winPrefs.months_ahead : 8 }) }, '−'),
+      h('output', { id: 'back-value', text: back === null ? '–' : String(back) }),
+      h('button', { type: 'button', 'aria-label': 'More months back', disabled: back === 24, onclick: () => setPrefs({ ...T.DEFAULT_PREFS, months_back: Math.min(24, (back ?? 1) + 1), months_ahead: winPrefs.mode === 'rolling' ? winPrefs.months_ahead : 8 }) }, '+')),
+    h('span', { class: 'range' }, startIn, '–', endIn,
+      h('button', { type: 'button', class: 'small-btn', id: 'range-apply', onclick: () => {
+        if (!startIn.value || !endIn.value || endIn.value < startIn.value) return toast('Pick a start month before the end month.');
+        setPrefs({ ...T.DEFAULT_PREFS, mode: 'fixed', fixed_start: `${startIn.value}-01`, fixed_end: `${endIn.value}-01` });
+      } }, 'Apply')),
+    h('button', { type: 'button', class: 'small-btn', id: 'win-reset', onclick: () => setPrefs(savedPrefs()) }, 'Reset'),
+    h('button', { type: 'button', class: 'small-btn', id: 'win-save', disabled: !unsaved, onclick: saveWindow }, 'Save as default'),
+    ...(unsaved ? [h('span', { class: 'unsaved', text: 'Not saved' })] : []),
+  );
+}
+
+async function saveWindow() {
+  try {
+    const { timeline_prefs } = await api('prefs.save', { prefs: winPrefs });
+    db.timeline_prefs = timeline_prefs;
+    winPrefs = { ...T.DEFAULT_PREFS, ...timeline_prefs };
+    renderTimeline();
+    toast('Saved. The homepage strip uses this window too.');
+  } catch (e) { toast(e.message); }
+}
+
+// Zoom with Ctrl/⌘ + scroll (trackpad pinch sends the same), drag to pan.
+let suppressClick = false;
+$('timeline').addEventListener('wheel', e => {
+  if (!db || !(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  winPrefs = T.zoomPrefs(currentWindow(), e.deltaY > 0 ? 1 : -1);
+  renderTimeline();
+}, { passive: false });
+(function setupPan() {
+  const box = $('timeline');
+  let startX = null, startPrefs = null, moved = 0, applied = 0;
+  box.addEventListener('pointerdown', e => {
+    if (!db || e.button !== 0 || !e.target.closest('.tl-track, .tl-scale')) return;
+    startX = e.clientX; startPrefs = winPrefs; moved = 0; applied = 0;
+  });
+  window.addEventListener('pointermove', e => {
+    if (startX === null) return;
+    const dx = e.clientX - startX;
+    moved = Math.max(moved, Math.abs(dx));
+    if (moved < 6) return;
+    box.classList.add('dragging');
+    const track = box.querySelector('.tl-scale');
+    const win = T.computeWindow(startPrefs, today());
+    const perMonth = (track ? track.getBoundingClientRect().width : 600) / win.months;
+    const shift = Math.round(-dx / perMonth);
+    if (shift !== applied) { applied = shift; winPrefs = shift ? T.panPrefs(win, shift) : startPrefs; renderTimeline(); }
+  });
+  window.addEventListener('pointerup', () => {
+    if (startX === null) return;
+    if (moved >= 6) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 0); }
+    startX = null;
+    box.classList.remove('dragging');
+  });
+})();
+
+function dateBox(s) {
+  const d = parse(s);
+  return h('div', { class: 'date-box' }, h('div', { class: 'm', text: MON[d.getMonth()] }), h('div', { class: 'd', text: String(d.getDate()) }));
+}
+
+function renderSidebar() {
+  const m = metrics();
+  const t = today();
+  const projTitle = id => (db.projects.find(p => p.id === id) || {}).title || '';
+  const items = [
+    ...m.overdue.map(x => ({ date: x.due_date, title: x.name, sub: `Overdue ${daysBetween(parse(x.due_date), t)} day${daysBetween(parse(x.due_date), t) === 1 ? '' : 's'} · ${projTitle(x.project_id)}`, overdue: true, project: x.project_id })),
+    ...m.soonMs.map(x => ({ date: x.due_date, title: x.name, sub: projTitle(x.project_id), project: x.project_id })),
+    ...m.soonDl.map(d => ({ date: d.date, title: d.name, sub: `${d.kind === 'conference' ? 'Conference deadline' : d.kind === 'event' ? 'Event' : 'Deadline'}${d.category_id && catById(d.category_id) ? ` · ${catById(d.category_id).name}` : ''}` })),
+  ].sort((a, b) => a.date.localeCompare(b.date));
+  $('next-list').replaceChildren(...(items.length ? items.map(it => h(it.project ? 'button' : 'div', {
+    class: `side-item${it.overdue ? ' overdue' : ''}`, type: it.project ? 'button' : null,
+    onclick: it.project ? () => openDrawer(it.project) : null,
+  }, dateBox(it.date), h('div', null, h('div', { class: 'side-title', text: it.title }), h('div', { class: 'side-sub', text: it.sub })))) : [h('div', { class: 'empty', text: 'Nothing due in the next 30 days.' })]));
+
+  $('wait-list').replaceChildren(...(m.waiting.length ? m.waiting.map(p => {
+    const days = p.waiting_since ? daysBetween(parse(p.waiting_since), t) : null;
+    const sub = [p.title, p.waiting_since ? `since ${fmtDate(p.waiting_since)} (${days} day${days === 1 ? '' : 's'})` : null].filter(Boolean).join(' · ');
+    return h('button', { class: 'side-item', type: 'button', onclick: () => openDrawer(p.id) },
+      h('div', { class: 'avatar', 'aria-hidden': 'true', text: initials(p.waiting_on) }),
+      h('div', null, h('div', { class: 'side-title', text: p.waiting_on }), h('div', { class: `side-sub${days !== null && days >= 14 ? ' warn' : ''}`, text: sub })));
+  }) : [h('div', { class: 'empty', text: 'Not waiting on anyone.' })]));
+}
+
+function statusPill(p) {
+  const cat = catById(p.category_id);
+  if (!p.status) return h('span', { class: 'muted', text: '—' });
+  const c = cat ? cat.color : '#a1a1aa';
+  return h('span', { class: 'pill', text: p.status, style: { background: `color-mix(in srgb, ${c} 18%, transparent)`, color: `color-mix(in srgb, ${c} 45%, #fff)` } });
+}
+
+function renderTable() {
+  const list = visibleProjects();
+  const rows = list.map(p => {
+    const cat = catById(p.category_id);
+    const links = (p.links || []).filter(l => isHttps(l.url));
+    const tr = h('tr', { tabindex: '0', 'data-project-id': p.id, onclick: () => openDrawer(p.id), onkeydown: e => { if (e.key === 'Enter') openDrawer(p.id); } },
+      h('td', null, p.title, p.archived ? h('span', { class: 'archived-tag', text: 'Archived' }) : null),
+      h('td', null, cat ? h('span', null, h('span', { class: 'swatch', style: { background: cat.color } }), cat.name) : ''),
+      h('td', null, statusPill(p)),
+      h('td', { text: p.next_action || '' }),
+      h('td', { class: 'muted', style: { color: 'var(--soft)' }, text: p.role || '' }),
+      h('td', null, links.length ? links.flatMap((l, i) => [i ? ' · ' : null, h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.label, onclick: e => e.stopPropagation() })]) : h('span', { class: 'muted', text: 'None yet' })),
+      h('td', { class: isStale(p) ? 'warn-text' : 'muted', text: relDays(p.updated_at) }));
+    return tr;
+  });
+  $('project-rows').replaceChildren(...(rows.length ? rows : [h('tr', null, h('td', { colspan: '7', class: 'muted', text: db.projects.length ? 'No projects match this filter.' : 'No projects yet. Use “New project” to add one.' }))]));
+}
+
+// ══════════════════════════════════════════
+//  Drawer: project editor + milestones
+// ══════════════════════════════════════════
+let drawerId = null;
+
+function openOverlay(el) {
+  $('scrim').hidden = false;
+  el.hidden = false;
+  const first = el.querySelector('input, select, textarea, button');
+  if (first) first.focus();
+}
+function closeOverlays() {
+  $('drawer').hidden = true;
+  $('modal').hidden = true;
+  $('scrim').hidden = true;
+  drawerId = null;
+}
+$('scrim').addEventListener('click', closeOverlays);
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!$('more-menu').hidden) return closeMenu();
+  const cancel = !$('modal').hidden && $('modal').querySelector('[data-cancel]');
+  if (cancel) return cancel.click(); // a confirm dialog: Escape means Cancel
+  if (!$('modal').hidden && !$('drawer').hidden) { $('modal').hidden = true; return; }
+  if (!$('modal').hidden || !$('drawer').hidden) closeOverlays();
+});
+
+function field(label, input) { return h('label', { class: 'field' }, label, input); }
+function textInput(name, value, attrs = {}) { return h('input', { type: 'text', name, value: value || '', ...attrs }); }
+
+function openDrawer(id) {
+  const p = id ? db.projects.find(x => x.id === id) : null;
+  if (id && !p) return;
+  drawerId = id || null;
+  const draft = p ? { ...p, links: [...(p.links || [])] } : {
+    title: '', category_id: (catFilter !== 'all' ? catFilter : db.categories[0]?.id) || '', status: null, links: [], archived: false,
+  };
+  renderDrawer(draft);
+  openOverlay($('drawer'));
+}
+
+function renderDrawer(draft) {
+  const isNew = !drawerId;
+  const f = {};
+  f.title = textInput('title', draft.title, { required: true, maxlength: '200' });
+  f.category = h('select', { name: 'category_id' }, db.categories.map(c => h('option', { value: c.id, text: c.name, selected: c.id === draft.category_id })));
+  f.status = h('select', { name: 'status' });
+  const statusField = field('Status', f.status);
+  const fillStatus = () => {
+    const cat = catById(f.category.value);
+    const list = statusesFor(cat);
+    statusField.hidden = !cat || cat.pipeline === 'none';
+    f.status.replaceChildren(...list.map(s => h('option', { value: s, text: s, selected: s === draft.status })));
+  };
+  f.category.addEventListener('change', () => { draft.status = null; fillStatus(); });
+  fillStatus();
+  f.role = textInput('role', draft.role, { maxlength: '120', placeholder: 'e.g. 1st author' });
+  f.mentor = textInput('mentor', draft.mentor, { maxlength: '200' });
+  f.collaborators = textInput('collaborators', draft.collaborators, { maxlength: '500' });
+  f.venue = textInput('venue', draft.venue, { maxlength: '200', placeholder: 'Target journal or conference' });
+  f.start = h('input', { type: 'date', name: 'start_date', value: draft.start_date || '' });
+  f.end = h('input', { type: 'date', name: 'end_date', value: draft.end_date || '' });
+  f.next = textInput('next_action', draft.next_action, { maxlength: '300' });
+  f.waiting = textInput('waiting_on', draft.waiting_on, { maxlength: '200', placeholder: 'Who you are waiting on' });
+  f.since = h('input', { type: 'date', name: 'waiting_since', value: draft.waiting_since || '' });
+  f.notes = h('textarea', { name: 'notes', maxlength: '5000' });
+  f.notes.value = draft.notes || '';
+
+  const linksBox = h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } });
+  const linkRows = [];
+  const addLinkRow = (l = { label: '', url: '' }) => {
+    const label = h('input', { class: 'input', type: 'text', value: l.label, placeholder: 'Label', 'aria-label': 'Link label', maxlength: '80' });
+    const url = h('input', { class: 'input', type: 'url', value: l.url, placeholder: 'https://…', 'aria-label': 'Link URL' });
+    const row = h('div', { class: 'link-row' }, label, url);
+    const entry = { label, url, row };
+    row.append(h('button', { type: 'button', class: 'btn icon-btn btn-ghost', 'aria-label': 'Remove link', text: '×', onclick: () => { row.remove(); linkRows.splice(linkRows.indexOf(entry), 1); } }));
+    linkRows.push(entry);
+    linksBox.append(row);
+  };
+  (draft.links || []).forEach(addLinkRow);
+
+  const collect = () => ({
+    title: f.title.value, category_id: f.category.value,
+    status: statusField.hidden ? null : f.status.value || null,
+    role: f.role.value, mentor: f.mentor.value, collaborators: f.collaborators.value, venue: f.venue.value,
+    start_date: f.start.value || null, end_date: f.end.value || null, next_action: f.next.value,
+    waiting_on: f.waiting.value, waiting_since: f.since.value || null, notes: f.notes.value,
+    links: linkRows.map(r => ({ label: r.label.value.trim(), url: r.url.value.trim() })).filter(l => l.label || l.url),
+    archived: !!draft.archived,
+  });
+
+  async function saveProject(extra = {}, msg) {
+    const project = { ...collect(), ...extra };
+    if (!project.title.trim()) { f.title.focus(); return toast('Give the project a title.'); }
+    if (project.links.some(l => !isHttps(l.url))) return toast('Link URLs must start with https://');
+    try {
+      const { project: saved } = await api('project.save', { id: drawerId || undefined, project });
+      const i = db.projects.findIndex(x => x.id === saved.id);
+      if (i >= 0) db.projects[i] = saved; else db.projects.push(saved);
+      drawerId = saved.id;
+      renderAll();
+      renderDrawer({ ...saved, links: [...(saved.links || [])] });
+      toast(msg || (isNew ? 'Project created' : 'Saved'));
+    } catch (e) { toast(e.message); }
+  }
+
+  const body = h('div', { class: 'drawer-body' },
+    field('Title', f.title),
+    h('div', { class: 'grid-2' }, field('Category', f.category), statusField),
+    h('div', { class: 'grid-2' }, field('Role', f.role), field('Mentor', f.mentor)),
+    field('Collaborators', f.collaborators),
+    field('Venue', f.venue),
+    h('div', { class: 'grid-2' }, field('Start date', f.start), field('End date', f.end)),
+    field('Next action', f.next),
+    h('div', { class: 'grid-2' }, field('Waiting on', f.waiting), field('Waiting since', f.since)),
+    h('div', { class: 'section-label', text: 'Links' }), linksBox,
+    h('button', { type: 'button', class: 'small-btn', style: { alignSelf: 'flex-start', minHeight: '44px' }, onclick: () => addLinkRow() }, '+ Add link'),
+    field('Notes', f.notes),
+    h('div', { class: 'section-label', text: 'Milestones' }),
+    isNew ? h('div', { class: 'empty', text: 'Save the project first, then add milestones.' }) : milestonesEditor(drawerId),
+  );
+
+  const foot = h('div', { class: 'drawer-foot' },
+    h('div', { style: { display: 'flex', gap: '10px', flexWrap: 'wrap' } },
+      isNew ? null : h('button', { type: 'button', class: 'btn', id: 'archive-btn', onclick: () => saveProject({ archived: !draft.archived }, draft.archived ? 'Project restored' : 'Project archived') }, draft.archived ? 'Unarchive' : 'Archive'),
+      isNew ? null : h('button', { type: 'button', class: 'btn btn-danger', id: 'delete-btn', onclick: () => deleteProject(draft) }, 'Delete')),
+    h('button', { type: 'button', class: 'btn btn-primary', id: 'save-project', onclick: () => saveProject() }, isNew ? 'Create project' : 'Save'));
+
+  $('drawer').replaceChildren(
+    h('div', { class: 'drawer-head' },
+      h('h2', { id: 'drawer-title', text: isNew ? 'New project' : draft.title }),
+      h('button', { type: 'button', class: 'btn icon-btn btn-ghost', 'aria-label': 'Close', text: '×', onclick: closeOverlays })),
+    body, foot);
+}
+
+function milestonesEditor(projectId) {
+  const box = h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' }, id: 'milestones' });
+  const t = todayStr();
+  const saveMs = async (id, ms) => {
+    try {
+      const { milestone } = await api('milestone.save', { id, milestone: { project_id: projectId, ...ms } });
+      const i = db.milestones.findIndex(x => x.id === milestone.id);
+      if (i >= 0) db.milestones[i] = milestone; else db.milestones.push(milestone);
+      touchLocal(projectId);
+      box.replaceWith(milestonesEditor(projectId));
+      renderAll();
+    } catch (e) { toast(e.message); }
+  };
+  for (const m of milestonesOf(projectId)) {
+    const done = h('input', { type: 'checkbox', checked: m.done, 'aria-label': `Done: ${m.name}` });
+    const name = h('input', { class: 'input', type: 'text', value: m.name, 'aria-label': 'Milestone name', maxlength: '200' });
+    const due = h('input', { class: 'input', type: 'date', value: m.due_date, 'aria-label': 'Due date', style: { colorScheme: 'dark' } });
+    const current = () => ({ name: name.value, due_date: due.value, done: done.checked, done_at: done.checked ? (m.done_at || t) : null });
+    done.addEventListener('change', () => saveMs(m.id, current()));
+    name.addEventListener('change', () => saveMs(m.id, current()));
+    due.addEventListener('change', () => saveMs(m.id, current()));
+    const del = h('button', { type: 'button', class: 'btn icon-btn btn-ghost', 'aria-label': `Delete milestone ${m.name}`, text: '×', onclick: async () => {
+      try {
+        await api('milestone.delete', { id: m.id });
+        db.milestones = db.milestones.filter(x => x.id !== m.id);
+        touchLocal(projectId);
+        box.replaceWith(milestonesEditor(projectId));
+        renderAll();
+      } catch (e) { toast(e.message); }
+    } });
+    const row = h('div', { class: `ms-row${m.done ? ' done' : ''}${!m.done && m.due_date < t ? ' overdue' : ''}` }, done, name, due, del);
+    if (!m.done && m.due_date < t) name.style.borderColor = '#7f1d1d';
+    box.append(row);
+  }
+  const newName = h('input', { class: 'input', type: 'text', placeholder: 'New milestone', 'aria-label': 'New milestone name', id: 'ms-new-name', maxlength: '200' });
+  const newDate = h('input', { class: 'input', type: 'date', 'aria-label': 'New milestone due date', id: 'ms-new-date', style: { colorScheme: 'dark' } });
+  const add = h('button', { type: 'button', class: 'btn icon-btn', 'aria-label': 'Add milestone', id: 'ms-add', text: '+', onclick: () => {
+    if (!newName.value.trim() || !newDate.value) return toast('Give the milestone a name and a date.');
+    saveMs(undefined, { name: newName.value, due_date: newDate.value, done: false });
+  } });
+  box.append(h('div', { class: 'ms-row' }, h('span'), newName, newDate, add));
+  return box;
+}
+
+function touchLocal(projectId) {
+  const p = db.projects.find(x => x.id === projectId);
+  if (p) p.updated_at = new Date().toISOString();
+}
+
+async function deleteProject(p) {
+  const ok = await confirmDialog(`Delete “${p.title}” and its milestones? This can't be undone. Archive keeps it instead.`, 'Delete project');
+  if (!ok) return;
+  try {
+    await api('project.delete', { id: p.id });
+    db.projects = db.projects.filter(x => x.id !== p.id);
+    db.milestones = db.milestones.filter(m => m.project_id !== p.id);
+    closeOverlays();
+    renderAll();
+    toast('Project deleted');
+  } catch (e) { toast(e.message); }
+}
+
+/** In-page confirm (browser dialogs block automation and look out of place). */
+function confirmDialog(message, label) {
+  return new Promise(resolve => {
+    const modal = $('modal');
+    const prevHidden = $('scrim').hidden;
+    const done = v => { modal.hidden = true; if (prevHidden && $('drawer').hidden) $('scrim').hidden = true; resolve(v); };
+    modal.replaceChildren(
+      h('h2', { id: 'modal-title', text: 'Are you sure?' }),
+      h('p', { text: message, style: { color: 'var(--soft)', margin: '0' } }),
+      h('div', { class: 'modal-foot' },
+        h('button', { type: 'button', class: 'btn', 'data-cancel': true, onclick: () => done(false) }, 'Cancel'),
+        h('button', { type: 'button', class: 'btn btn-danger', id: 'confirm-yes', onclick: () => done(true) }, label)));
+    openOverlay(modal);
+  });
+}
+
+// ══════════════════════════════════════════
+//  Manage categories
+// ══════════════════════════════════════════
+function openCategories(editing = null) {
+  const modal = $('modal');
+  const counts = id => db.projects.filter(p => p.category_id === id).length;
+  const pipelineLabel = { research: 'Research pipeline', simple: 'Simple pipeline', custom: 'Custom statuses', none: 'No statuses' };
+  const list = h('div', { class: 'rows' }, db.categories.map(c => {
+    const n = counts(c.id);
+    return h('div', { class: 'row-item', 'data-category': c.name },
+      h('span', { class: 'swatch', style: { background: c.color, width: '14px', height: '14px' } }),
+      h('div', { class: 'grow' }, h('div', { text: c.name }), h('div', { class: 'muted', style: { fontSize: '12px' }, text: `${pipelineLabel[c.pipeline]} · ${n} project${n === 1 ? '' : 's'}${c.built_in ? ' · built-in' : ''}` })),
+      h('button', { type: 'button', class: 'small-btn', style: { minHeight: '44px' }, onclick: () => openCategories(c) }, 'Edit'),
+      h('button', { type: 'button', class: 'small-btn', style: { minHeight: '44px' }, disabled: n > 0, title: n > 0 ? 'Move its projects to another category first' : null, onclick: async () => {
+        if (!(await confirmDialog(`Delete the “${c.name}” category?`, 'Delete'))) return openCategories();
+        try {
+          await api('category.delete', { id: c.id });
+          db.categories = db.categories.filter(x => x.id !== c.id);
+          db.deadlines.forEach(d => { if (d.category_id === c.id) d.category_id = null; });
+          renderAll();
+          openCategories();
+          toast('Category deleted');
+        } catch (e) { toast(e.message); openCategories(); }
+      } }, 'Delete'));
+  }));
+
+  const c = editing || { name: '', color: COLORS[db.categories.length % COLORS.length], pipeline: 'simple', statuses: [] };
+  const name = h('input', { type: 'text', value: c.name, maxlength: '60', id: 'cat-name' });
+  const hex = h('input', { type: 'text', value: c.color, maxlength: '7', id: 'cat-color', 'aria-label': 'Color hex' });
+  const presets = h('div', { class: 'presets', role: 'group', 'aria-label': 'Color' });
+  const paintPresets = () => presets.replaceChildren(...COLORS.map(col => h('button', {
+    type: 'button', 'aria-label': col, 'aria-pressed': String(hex.value.toLowerCase() === col), style: { background: col },
+    onclick: () => { hex.value = col; paintPresets(); },
+  })), hex);
+  hex.addEventListener('input', paintPresets);
+  paintPresets();
+  const pipeline = h('select', { id: 'cat-pipeline' }, Object.entries(pipelineLabel).map(([v, l]) => h('option', { value: v, text: l, selected: v === c.pipeline })));
+  const statuses = h('textarea', { id: 'cat-statuses', placeholder: 'One status per line, in order' });
+  statuses.value = (c.statuses || []).join('\n');
+  const statusesField = field('Statuses (one per line, in order)', statuses);
+  const syncPipeline = () => { statusesField.hidden = pipeline.value !== 'custom'; };
+  pipeline.addEventListener('change', syncPipeline);
+  syncPipeline();
+
+  const save = async () => {
+    const category = { name: name.value, color: hex.value.trim(), pipeline: pipeline.value, statuses: statuses.value.split('\n').map(s => s.trim()).filter(Boolean), sort_order: c.sort_order ?? db.categories.length + 1 };
+    try {
+      const { category: saved } = await api('category.save', { id: editing ? editing.id : undefined, category });
+      const i = db.categories.findIndex(x => x.id === saved.id);
+      if (i >= 0) db.categories[i] = saved; else db.categories.push(saved);
+      renderAll();
+      openCategories();
+      toast(editing ? 'Category saved' : 'Category added');
+    } catch (e) { toast(e.message); }
+  };
+
+  modal.replaceChildren(
+    h('h2', { id: 'modal-title', text: 'Manage categories' }),
+    list,
+    h('div', { class: 'form-box' },
+      h('div', { class: 'section-label', style: { marginTop: '0' }, text: editing ? `Edit “${editing.name}”` : 'Add a category' }),
+      field('Name', name), field('Color', presets), field('Pipeline', pipeline), statusesField,
+      h('div', { class: 'modal-foot', style: { marginTop: '4px' } },
+        editing ? h('button', { type: 'button', class: 'btn', onclick: () => openCategories() }, 'Cancel edit') : null,
+        h('button', { type: 'button', class: 'btn btn-primary', id: 'cat-save', onclick: save }, editing ? 'Save category' : 'Add category'))),
+    h('div', { class: 'modal-foot' }, h('button', { type: 'button', class: 'btn', onclick: closeOverlays }, 'Done')));
+  openOverlay(modal);
+  (editing ? name : list.querySelector('button') || name).focus();
+}
+
+// ══════════════════════════════════════════
+//  Deadlines & events
+// ══════════════════════════════════════════
+function openDeadlines(editing = null) {
+  const modal = $('modal');
+  const kinds = { deadline: 'Deadline', event: 'Event', conference: 'Conference deadline' };
+  const list = h('div', { class: 'rows' }, db.deadlines.length ? [...db.deadlines].sort((a, b) => a.date.localeCompare(b.date)).map(d => h('div', { class: 'row-item', 'data-deadline': d.name },
+    dateBox(d.date),
+    h('div', { class: 'grow' }, h('div', { text: d.name }), h('div', { class: 'muted', style: { fontSize: '12px' }, text: [kinds[d.kind], d.category_id && catById(d.category_id) ? catById(d.category_id).name : null, d.show_on_timeline ? 'On timeline' : 'Hidden from timeline'].filter(Boolean).join(' · ') })),
+    h('button', { type: 'button', class: 'small-btn', style: { minHeight: '44px' }, onclick: () => openDeadlines(d) }, 'Edit'),
+    h('button', { type: 'button', class: 'small-btn', style: { minHeight: '44px' }, onclick: async () => {
+      if (!(await confirmDialog(`Delete “${d.name}”?`, 'Delete'))) return openDeadlines();
+      try {
+        await api('deadline.delete', { id: d.id });
+        db.deadlines = db.deadlines.filter(x => x.id !== d.id);
+        renderAll();
+        openDeadlines();
+      } catch (e) { toast(e.message); openDeadlines(); }
+    } }, 'Delete'))) : h('div', { class: 'empty', text: 'No deadlines or events yet.' }));
+
+  const d = editing || { name: '', date: '', kind: 'deadline', category_id: null, show_on_timeline: true, notes: '' };
+  const name = h('input', { type: 'text', value: d.name, maxlength: '200', id: 'dl-name' });
+  const date = h('input', { type: 'date', value: d.date, id: 'dl-date', style: { colorScheme: 'dark' } });
+  const kind = h('select', { id: 'dl-kind' }, Object.entries(kinds).map(([v, l]) => h('option', { value: v, text: l, selected: v === d.kind })));
+  const cat = h('select', { id: 'dl-category' }, h('option', { value: '', text: 'No category' }), db.categories.map(c => h('option', { value: c.id, text: c.name, selected: c.id === d.category_id })));
+  const show = h('input', { type: 'checkbox', checked: d.show_on_timeline, id: 'dl-show' });
+  const notes = h('textarea', { id: 'dl-notes', maxlength: '2000' });
+  notes.value = d.notes || '';
+  const save = async () => {
+    try {
+      const { deadline } = await api('deadline.save', { id: editing ? editing.id : undefined, deadline: { name: name.value, date: date.value, kind: kind.value, category_id: cat.value || null, show_on_timeline: show.checked, notes: notes.value } });
+      const i = db.deadlines.findIndex(x => x.id === deadline.id);
+      if (i >= 0) db.deadlines[i] = deadline; else db.deadlines.push(deadline);
+      renderAll();
+      openDeadlines();
+      toast(editing ? 'Saved' : 'Added');
+    } catch (e) { toast(e.message); }
+  };
+  modal.replaceChildren(
+    h('h2', { id: 'modal-title', text: 'Deadlines & events' }),
+    list,
+    h('div', { class: 'form-box' },
+      h('div', { class: 'section-label', style: { marginTop: '0' }, text: editing ? `Edit “${editing.name}”` : 'Add a deadline or event' }),
+      field('Name', name),
+      h('div', { class: 'grid-2' }, field('Date', date), field('Kind', kind)),
+      field('Category', cat),
+      h('label', { class: 'check' }, show, 'Show on timeline'),
+      field('Notes', notes),
+      h('div', { class: 'modal-foot', style: { marginTop: '4px' } },
+        editing ? h('button', { type: 'button', class: 'btn', onclick: () => openDeadlines() }, 'Cancel edit') : null,
+        h('button', { type: 'button', class: 'btn btn-primary', id: 'dl-save', onclick: save }, editing ? 'Save' : 'Add'))),
+    h('div', { class: 'modal-foot' }, h('button', { type: 'button', class: 'btn', onclick: closeOverlays }, 'Done')));
+  openOverlay(modal);
+  (editing ? name : name).focus();
+}
+
+// ══════════════════════════════════════════
+//  Export
+// ══════════════════════════════════════════
+async function exportData() {
+  const r = await call('export', {});
+  if (!r.ok) return toast(r.data.message || 'Export failed.');
+  const blob = new Blob([JSON.stringify(r.data.export, null, 2)], { type: 'application/json' });
+  const a = h('a', { href: URL.createObjectURL(blob), download: `projects-export-${todayStr()}.json` });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('Export downloaded');
+}
+
+// ══════════════════════════════════════════
+//  Top bar wiring, session start / lock
+// ══════════════════════════════════════════
+function closeMenu() { $('more-menu').hidden = true; $('more-btn').setAttribute('aria-expanded', 'false'); }
+$('more-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  const open = $('more-menu').hidden;
+  $('more-menu').hidden = !open;
+  $('more-btn').setAttribute('aria-expanded', String(open));
+  if (open) $('more-menu').querySelector('button').focus();
+});
+document.addEventListener('click', e => { if (!e.target.closest('#more-menu')) closeMenu(); });
+$('menu-categories').addEventListener('click', () => { closeMenu(); openCategories(); });
+$('menu-deadlines').addEventListener('click', () => { closeMenu(); openDeadlines(); });
+$('menu-archived').addEventListener('click', () => { closeMenu(); showArchived = !showArchived; renderAll(); });
+$('menu-export').addEventListener('click', () => { closeMenu(); exportData(); });
+$('tab-timeline').addEventListener('click', () => { view = 'timeline'; renderAll(); });
+$('tab-list').addEventListener('click', () => { view = 'list'; renderAll(); });
+$('cat-filter').addEventListener('change', e => { catFilter = e.target.value; renderAll(); });
+$('new-project').addEventListener('click', () => {
+  if (!db.categories.length) return toast('Add a category first (⋯ → Manage categories).');
+  openDrawer(null);
+});
+$('lock-btn').addEventListener('click', () => lock('Locked.', true));
+
+function startSession(t) {
+  token = t;
+  touch();
+  $('pin-screen').hidden = true;
+  $('app').hidden = false;
+  loadData();
+}
+
+function lock(msg, info = false) {
+  token = null;
+  db = null;
+  clearTimeout(idleTimer);
+  closeOverlays();
+  closeMenu();
+  ['kpis', 'timeline', 'win-controls', 'next-list', 'wait-list', 'project-rows', 'drawer', 'modal'].forEach(id => $(id).replaceChildren());
+  showPin(msg, info);
+}
+
+if (resetToken) pinMode = 'reset1';
+showPin();
+</script>
+</body>
+</html>

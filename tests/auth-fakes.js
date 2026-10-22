@@ -17,8 +17,55 @@ export function createMemoryStore(initial = {}) {
   const tokens = [];
   const links = [];
   const settings = { row: null };
+  // Dashboard tables (docs/sql/001): generic rows with the same defaults and constraints that matter.
+  const tables = {
+    categories: [], projects: [], milestones: [], deadlines: [], project_notes: [],
+    timeline_prefs: [{ id: 1, mode: 'rolling', months_back: 1, months_ahead: 8, fixed_start: null, fixed_end: null }],
+  };
+  const sortBy = (rows, order) => {
+    if (!order) return rows;
+    const keys = order.split(',').map(s => s.split('.'));
+    return [...rows].sort((a, b) => {
+      for (const [k, dir] of keys) {
+        const x = a[k] ?? '', y = b[k] ?? '';
+        if (x < y) return dir === 'desc' ? 1 : -1;
+        if (x > y) return dir === 'desc' ? -1 : 1;
+      }
+      return 0;
+    });
+  };
+  const conflict = () => Object.assign(new Error('duplicate'), { status: 409 });
   return {
-    auth, tokens, links, settings,
+    auth, tokens, links, settings, tables,
+    async listRows(table, order) { await tick(); return sortBy(tables[table], order).map(r => structuredClone(r)); },
+    async insertRow(table, row) {
+      await tick();
+      if (table === 'categories' && tables.categories.some(c => c.name === row.name)) throw conflict();
+      const full = { id: randomUUID(), created_at: new Date().toISOString(), ...(table === 'categories' && { built_in: false }), ...row };
+      tables[table].push(full);
+      return structuredClone(full);
+    },
+    async updateRow(table, id, patch) {
+      await tick();
+      const row = tables[table].find(r => String(r.id) === String(id));
+      if (!row) return null;
+      if (table === 'categories' && patch.name && tables.categories.some(c => c !== row && c.name === patch.name)) throw conflict();
+      Object.assign(row, patch);
+      return structuredClone(row);
+    },
+    async deleteRow(table, id) {
+      await tick();
+      const i = tables[table].findIndex(r => String(r.id) === String(id));
+      if (i < 0) return false;
+      tables[table].splice(i, 1);
+      if (table === 'projects') { // on delete cascade
+        tables.milestones = tables.milestones.filter(m => m.project_id !== id);
+        tables.project_notes = tables.project_notes.filter(n => n.project_id !== id);
+      }
+      return true;
+    },
+    async countWhere(table, column, value) { await tick(); return tables[table].filter(r => r[column] === value).length; },
+    async clearWhere(table, column, value) { await tick(); tables[table].forEach(r => { if (r[column] === value) r[column] = null; }); },
     async insertLink(fields) {
       await tick();
       const row = { id: randomUUID(), ...fields };

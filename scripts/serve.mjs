@@ -20,7 +20,9 @@ createServer(async (req, res) => {
       const mod = await import(pathToFileURL(join(ROOT, 'api', `${api[1]}.js`)).href);
       return await mod.default(req, res);
     }
-    const rel = normalize(pathname === '/' ? '/index.html' : decodeURIComponent(pathname));
+    // Same clean URLs as vercel.json's rewrites.
+    const routes = { '/': '/index.html', '/projects': '/projects.html' };
+    const rel = normalize(routes[pathname] || decodeURIComponent(pathname));
     const file = join(ROOT, rel);
     if (!file.startsWith(ROOT) || /[\/](\.|node_modules)/.test(rel)) throw Object.assign(new Error(), { code: 'ENOENT' });
     const body = await readFile(file);
