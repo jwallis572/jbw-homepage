@@ -22,8 +22,20 @@ export const WORK_LINKS = [
  * link tests check the real data; cloud settings are blanked so they can't change layout or theme.
  * The page must never contact Supabase itself, so any such request is aborted.
  */
-export async function stubNetwork(page, { weather = WEATHER_FIXTURE, weatherStatus = 200, suggest, windy = false } = {}) {
+export const EMPTY_TIMELINE = {
+  window: { mode: 'rolling', months_back: 1, months_ahead: 8, fixed_start: null, fixed_end: null },
+  today: '2026-10-19', counts: { active: 0, overdue: 0 }, projects: [], deadlines: [],
+};
+
+/**
+ * timeline: the /api/timeline body for the homepage strip (that endpoint needs the secret key,
+ * which CI doesn't have). Pass { status } to simulate a failure.
+ */
+export async function stubNetwork(page, { weather = WEATHER_FIXTURE, weatherStatus = 200, suggest, windy = false, timeline = EMPTY_TIMELINE } = {}) {
   await page.route('**/*.supabase.co/**', route => route.abort());
+  await page.route('**/api/timeline', route => (timeline.status
+    ? route.fulfill({ status: timeline.status, contentType: 'application/json', body: '{"error":"upstream"}' })
+    : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(timeline) })));
   await page.route('**/api/home', async route => {
     const res = await route.fetch();
     if (!res.ok()) return route.fulfill({ response: res });

@@ -1,5 +1,5 @@
-const CACHE = 'jordan-start-v6';
-const PRECACHE = ['/', '/index.html', '/manifest.json', '/icon.svg', '/sw.js'];
+const CACHE = 'jordan-start-v7';
+const PRECACHE = ['/', '/index.html', '/timeline.js', '/manifest.json', '/icon.svg', '/sw.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
