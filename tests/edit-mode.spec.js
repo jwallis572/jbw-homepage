@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { stubNetwork, FIXED_NOW } from './helpers.js';
 
-// Edit mode behind the PIN (plan §6.4, §8). /api/* and the links table are stubbed, so these never
-// touch the real backend. The request log checks that the browser itself never writes to Supabase.
+// Edit mode behind the PIN (plan §6.4, §8). /api/* is stubbed (including /api/home, which supplies
+// links and cloud settings), so these never touch the real backend. The request log checks that the
+// browser never contacts Supabase at all: reads and writes both go through our /api functions.
 const LINKS = [
   { id: 'l-admin', section: 'admin', label: 'UTH VPN', url: 'https://vpn.uth.edu', icon: 'fa-solid fa-shield-halved', sort_order: 0 },
   { id: 'l-work-1', section: 'work', label: 'MD Calc', url: 'https://www.mdcalc.com', icon: 'fa-solid fa-calculator', sort_order: 0 },
@@ -13,23 +14,17 @@ const json = (route, status, body) => route.fulfill({ status, contentType: 'appl
 
 async function setup(page, { status = {}, cloudSettings = null } = {}) {
   await stubNetwork(page);
-  await page.route('**/rest/v1/links**', route => route.request().method() === 'GET'
-    ? json(route, 200, LINKS) : json(route, 403, { message: 'browser writes are not allowed' }));
-  if (cloudSettings) {
-    await page.route('**/rest/v1/settings**', route => route.request().method() === 'GET'
-      ? json(route, 200, { value: cloudSettings }) : json(route, 403, {}));
-  }
+  await page.route('**/api/home', route => json(route, 200, { links: LINKS, settings: cloudSettings }));
 
-  const log = { api: [], supabaseWrites: [] };
-  page.on('request', r => {
-    if (r.url().includes('/rest/v1/') && r.method() !== 'GET' && r.method() !== 'HEAD') log.supabaseWrites.push(`${r.method()} ${r.url()}`);
-  });
+  const log = { api: [], supabase: [] };
+  page.on('request', r => { if (r.url().includes('supabase.co')) log.supabase.push(`${r.method()} ${r.url()}`); });
 
   let n = 1;
   const nextToken = () => ({ token: `tok-${++n}`, exp: Date.now() + 30 * 60 * 1000 });
   await page.route('**/api/*', async route => {
     const req = route.request();
     const name = new URL(req.url()).pathname.split('/').pop();
+    if (name === 'home') return route.fallback();
     const body = req.postDataJSON() || {};
     log.api.push({ name, body, auth: req.headers().authorization || null });
     if (name === 'auth') {
@@ -91,7 +86,7 @@ test('Edit Links asks for the PIN first and shows wrong-PIN feedback', async ({ 
   await expect(page.locator('#edit-mode-btn')).toHaveText('✅ Done Editing');
 });
 
-test('link writes go to /api/links with the current bearer token, never straight to Supabase', async ({ page }) => {
+test('link writes go to /api/links with the current bearer token, and the page never contacts Supabase', async ({ page }) => {
   const log = await setup(page);
   await open(page);
   await unlock(page);
@@ -116,7 +111,7 @@ test('link writes go to /api/links with the current bearer token, never straight
   expect(writes[0].body.link).toMatchObject({ section: 'work', label: 'EM Houston', url: 'https://emhouston.org' });
   // Each response's refreshed token is the one the next request sends.
   expect(writes.map(c => c.auth)).toEqual(['Bearer tok-1', 'Bearer tok-2', 'Bearer tok-3']);
-  expect(log.supabaseWrites).toEqual([]);
+  expect(log.supabase).toEqual([]);
 });
 
 test('the token is never stored, and Done Editing or a reload locks edit mode again', async ({ page }) => {
@@ -152,7 +147,7 @@ test('a 401 from the server ends the edit session', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/edit-mode/);
   await expect(page.locator('#toast')).toContainText('Enter your PIN again');
   await expect(work.locator('.link-item', { hasText: 'OpenEvidence' })).toHaveCount(1);
-  expect(log.supabaseWrites).toEqual([]);
+  expect(log.supabase).toEqual([]);
 });
 
 test('30 idle minutes lock edit mode', async ({ page }) => {
@@ -173,7 +168,7 @@ test.describe('settings sync', () => {
     await open(page);
     await page.waitForTimeout(1200); // longer than the 800ms sync debounce
     expect(log.api.filter(c => c.name === 'settings')).toEqual([]);
-    expect(log.supabaseWrites).toEqual([]);
+    expect(log.supabase).toEqual([]);
     expect(await page.evaluate(() => localStorage.getItem('jordan_start_settings_pending'))).toBeNull();
   });
 
@@ -200,7 +195,7 @@ test.describe('settings sync', () => {
     await page.locator('label:has(#dark-mode-toggle) .toggle-slider').click();
     await expect.poll(() => log.api.filter(c => c.name === 'settings').length).toBe(2);
     expect(log.api.filter(c => c.name === 'settings')[1].body.value.theme).toBe('dark');
-    expect(log.supabaseWrites).toEqual([]);
+    expect(log.supabase).toEqual([]);
   });
 
   test('pending local settings are not overwritten by the cloud copy on load', async ({ page }) => {

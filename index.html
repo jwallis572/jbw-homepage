@@ -10,7 +10,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
   <!-- No-flash theme + accent init — runs sync before paint -->
   <script>
@@ -826,12 +825,17 @@
 
 <script>
 // ══════════════════════════════════════════
-//  Supabase (reads only; every write goes through /api with a PIN session)
+//  Data: one read through our own server
 // ══════════════════════════════════════════
-const { createClient } = window.supabase;
-const SB_URL = 'https://rrjnvgufodklgkrnhzwu.supabase.co';
-const SB_KEY = 'sb_publishable_kjdshNTIpb9NQ89rjjx1_w_IUSf_a-n';
-const sb = createClient(SB_URL, SB_KEY);
+// Links and cloud settings come from /api/home, never from Supabase directly, so the page works on
+// networks that block supabase.co. Writes go through /api with a PIN session (see Edit Mode).
+let _homeData;
+function loadHomeData() {
+  return _homeData ||= fetch('/api/home').then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  });
+}
 
 // ══════════════════════════════════════════
 //  Section metadata (static)
@@ -925,10 +929,9 @@ async function pushSettings() {
 
 async function pullAndApplySettings() {
   if (localStorage.getItem(SETTINGS_PENDING)) return; // local changes win until the next unlock syncs them
-  const { data, error } = await sb.from('settings')
-    .select('value').eq('key', 'prefs').maybeSingle();
-  if (error || !data) return;
-  const p = data.value;
+  let p;
+  try { p = (await loadHomeData()).settings; } catch { return; }
+  if (!p) return;
 
   _syncPaused = true;
   try {
@@ -1291,14 +1294,16 @@ document.querySelectorAll('.engine-option').forEach(b =>
 //  Load Links from Supabase
 // ══════════════════════════════════════════
 async function loadLinks() {
-  const { data, error } = await sb.from('links').select('*').order('section').order('sort_order');
-  if (error) {
+  let data;
+  try {
+    data = await loadHomeData();
+  } catch (error) {
     document.getElementById('cards-grid').innerHTML =
       `<div class="cards-loading" style="color:#ef4444">Failed to load links. Check console.</div>`;
-    console.error(error);
+    console.error('Loading links failed:', error.message);
     return;
   }
-  linksCache = data;
+  linksCache = data.links;
   renderTiles();
 }
 

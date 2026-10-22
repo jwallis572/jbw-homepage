@@ -17,16 +17,18 @@ export const WORK_LINKS = [
 ];
 
 /**
- * Stub the network the page talks to so tests are deterministic. Cloud settings read as empty.
- * The page only ever reads Supabase (writes go through /api with a PIN session), so any browser
- * write to the settings table is refused here. Links are still read from Supabase, so the link
- * tests check the real data.
+ * Stub the network the page talks to so tests are deterministic. The page reads links and cloud
+ * settings from /api/home (our server reads Supabase), so the real links still come through and the
+ * link tests check the real data; cloud settings are blanked so they can't change layout or theme.
+ * The page must never contact Supabase itself, so any such request is aborted.
  */
 export async function stubNetwork(page, { weather = WEATHER_FIXTURE, weatherStatus = 200, suggest, windy = false } = {}) {
-  await page.route('**/rest/v1/settings**', route =>
-    route.request().method() === 'GET'
-      ? route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
-      : route.fulfill({ status: 403, contentType: 'application/json', body: '{"message":"browser writes not allowed"}' }));
+  await page.route('**/*.supabase.co/**', route => route.abort());
+  await page.route('**/api/home', async route => {
+    const res = await route.fetch();
+    if (!res.ok()) return route.fulfill({ response: res });
+    await route.fulfill({ response: res, json: { ...(await res.json()), settings: null } });
+  });
 
   await page.route('https://api.open-meteo.com/**', route =>
     weatherStatus === 200

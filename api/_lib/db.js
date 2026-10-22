@@ -15,15 +15,13 @@
 //   setLinkOrder(section, ids)        -> number of links in that section that were updated
 //   upsertSettings(value, updatedAt)  -> the 'prefs' row
 
-export function createSupabaseStore({ url, secretKey, fetch = globalThis.fetch }) {
-  if (!url || !secretKey) throw new Error('SUPABASE_URL and SUPABASE_SECRET_KEY must be set');
+function restClient(url, key, fetch) {
   const base = `${url.replace(/\/$/, '')}/rest/v1`;
-
-  async function rest(path, { method = 'GET', body, prefer } = {}) {
+  return async function rest(path, { method = 'GET', body, prefer } = {}) {
     const res = await fetch(`${base}/${path}`, {
       method,
       headers: {
-        apikey: secretKey,
+        apikey: key,
         'Content-Type': 'application/json',
         Accept: 'application/json',
         ...(prefer && { Prefer: prefer }),
@@ -35,7 +33,29 @@ export function createSupabaseStore({ url, secretKey, fetch = globalThis.fetch }
     if (!res.ok) throw new Error(`supabase ${method} ${path.split('?')[0]} failed: ${res.status}`);
     const text = await res.text();
     return text ? JSON.parse(text) : null;
-  }
+  };
+}
+
+/**
+ * Public reads for the homepage (api/home.js) with the publishable key, so the server has exactly
+ * the read-only access the browser used to have and needs no secret.
+ *   listLinks()    -> links rows ordered by section, sort_order
+ *   getSettings()  -> the 'prefs' value | null
+ */
+export function createReadStore({ url, key, fetch = globalThis.fetch }) {
+  const rest = restClient(url, key, fetch);
+  return {
+    listLinks: () => rest('links?select=*&order=section.asc,sort_order.asc'),
+    async getSettings() {
+      const rows = await rest('settings?key=eq.prefs&select=value');
+      return rows?.[0]?.value ?? null;
+    },
+  };
+}
+
+export function createSupabaseStore({ url, secretKey, fetch = globalThis.fetch }) {
+  if (!url || !secretKey) throw new Error('SUPABASE_URL and SUPABASE_SECRET_KEY must be set');
+  const rest = restClient(url, secretKey, fetch);
 
   return {
     async getAuthState() {
