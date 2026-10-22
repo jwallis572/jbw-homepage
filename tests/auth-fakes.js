@@ -15,8 +15,44 @@ export function createMemoryStore(initial = {}) {
     updated_at: '2026-10-01T00:00:00.000Z', ...initial,
   };
   const tokens = [];
+  const links = [];
+  const settings = { row: null };
   return {
-    auth, tokens,
+    auth, tokens, links, settings,
+    async insertLink(fields) {
+      await tick();
+      const row = { id: randomUUID(), ...fields };
+      links.push(row);
+      return { ...row };
+    },
+    async updateLink(id, fields) {
+      await tick();
+      const row = links.find(l => l.id === id);
+      if (!row) return null;
+      Object.assign(row, fields);
+      return { ...row };
+    },
+    async deleteLink(id) {
+      await tick();
+      const i = links.findIndex(l => l.id === id);
+      if (i < 0) return false;
+      links.splice(i, 1);
+      return true;
+    },
+    async setLinkOrder(section, ids) {
+      await tick();
+      let n = 0;
+      ids.forEach((id, sort_order) => {
+        const row = links.find(l => l.id === id && l.section === section);
+        if (row) { row.sort_order = sort_order; n++; }
+      });
+      return n;
+    },
+    async upsertSettings(value, updated_at) {
+      await tick();
+      settings.row = { key: 'prefs', value, updated_at };
+      return { ...settings.row };
+    },
     async getAuthState() { await tick(); return { ...auth }; },
     async updateAuthState(patch, { ifUpdatedAt } = {}) {
       await tick();
