@@ -14,6 +14,15 @@
 //   deleteLink(id)                    -> true if a row was deleted
 //   setLinkOrder(section, ids)        -> number of links in that section that were updated
 //   upsertSettings(value, updatedAt)  -> the 'prefs' row
+//
+// Projects dashboard tables (api/projects.js, api/export.js), generic by table name:
+//   listRows(table, order)            -> all rows, optionally ordered ("col.asc,col2.desc")
+//   insertRow(table, row)             -> inserted row
+//   updateRow(table, id, patch)       -> updated row | null if no such id
+//   deleteRow(table, id)              -> true if a row was deleted
+//   countWhere(table, column, value)  -> number of rows where column = value
+//   clearWhere(table, column, value)  -> sets column to null where column = value
+// A unique or foreign-key violation surfaces as an Error with status 409.
 
 function restClient(url, key, fetch) {
   const base = `${url.replace(/\/$/, '')}/rest/v1`;
@@ -30,7 +39,9 @@ function restClient(url, key, fetch) {
       signal: AbortSignal.timeout(5000),
     });
     // Status only: response bodies can echo row data, which must not end up in logs.
-    if (!res.ok) throw new Error(`supabase ${method} ${path.split('?')[0]} failed: ${res.status}`);
+    if (!res.ok) {
+      throw Object.assign(new Error(`supabase ${method} ${path.split('?')[0]} failed: ${res.status}`), { status: res.status });
+    }
     const text = await res.text();
     return text ? JSON.parse(text) : null;
   };
@@ -109,6 +120,24 @@ export function createSupabaseStore({ url, secretKey, fetch = globalThis.fetch }
         prefer: 'resolution=merge-duplicates,return=representation',
       });
       return rows[0];
+    },
+    listRows: (table, order) => rest(`${table}?select=*${order ? `&order=${order}` : ''}`),
+    async insertRow(table, row) {
+      return (await rest(table, { method: 'POST', body: row, prefer: 'return=representation' }))[0];
+    },
+    async updateRow(table, id, patch) {
+      const rows = await rest(`${table}?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: patch, prefer: 'return=representation' });
+      return rows[0] || null;
+    },
+    async deleteRow(table, id) {
+      const rows = await rest(`${table}?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', prefer: 'return=representation' });
+      return rows.length > 0;
+    },
+    async countWhere(table, column, value) {
+      return (await rest(`${table}?select=id&${column}=eq.${encodeURIComponent(value)}`)).length;
+    },
+    async clearWhere(table, column, value) {
+      await rest(`${table}?${column}=eq.${encodeURIComponent(value)}`, { method: 'PATCH', body: { [column]: null }, prefer: 'return=minimal' });
     },
   };
 }
