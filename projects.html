@@ -138,6 +138,29 @@
     .avatar { width: 36px; height: 36px; border-radius: 50%; background: #27272a; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--soft); flex-shrink: 0; }
     .empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
 
+    .lane + .lane { margin-top: 22px; }
+    .lane-head { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; margin-bottom: 10px; }
+    .lane-head .swatch { margin-right: 0; width: 12px; height: 12px; }
+    .lane-head .muted { font-size: 13px; font-weight: 400; }
+    .lane-cols { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+    .col { flex: 0 0 236px; background: var(--input); border-radius: 16px; padding: 10px; min-height: 120px; display: flex; flex-direction: column; gap: 8px; }
+    .col.drop { box-shadow: inset 0 0 0 2px var(--accent); }
+    .col-head { display: flex; justify-content: space-between; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 2px 4px 4px; }
+    .bcard { background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 4px; cursor: grab; }
+    .bcard.dragging { opacity: .4; }
+    .bcard-title { display: block; width: 100%; background: none; border: none; padding: 0; text-align: left; font-size: 14px; font-weight: 500; color: var(--text); min-height: 24px; }
+    .bcard-title:hover { color: #93c5fd; }
+    .bcard-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .bcard-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .bcard-badges:empty { display: none; }
+    .badge { font-size: 11px; border-radius: 6px; padding: 2px 6px; background: #27272a; color: var(--soft); }
+    .badge.red { background: rgba(248,113,113,.14); color: var(--red-soft); }
+    .badge.amber { background: rgba(252,211,77,.14); color: var(--amber); }
+    .bcard-move { display: flex; justify-content: space-between; margin-top: 2px; }
+    .bcard-move button { width: 44px; height: 44px; border-radius: 10px; border: none; background: transparent; color: var(--muted); font-size: 13px; }
+    .bcard-move button:hover:not(:disabled) { background: #27272a; color: var(--text); }
+    .bcard-move button:disabled { opacity: .25; cursor: default; }
+
     .table-wrap { overflow-x: auto; }
     table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 14px; }
     th { text-align: left; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; font-weight: 500; padding: 10px 12px; }
@@ -236,7 +259,7 @@
       <div class="topbar-right">
         <div class="tabs" role="tablist" aria-label="View">
           <button class="tab" role="tab" id="tab-timeline" aria-selected="true" type="button">Timeline</button>
-          <button class="tab" role="tab" id="tab-board" aria-selected="false" type="button" disabled title="Coming later">Board</button>
+          <button class="tab" role="tab" id="tab-board" aria-selected="false" type="button">Board</button>
           <button class="tab" role="tab" id="tab-list" aria-selected="false" type="button">List</button>
         </div>
         <label class="sr-only" for="cat-filter">Filter by category</label>
@@ -282,7 +305,15 @@
       </aside>
     </div>
 
-    <section class="card" aria-labelledby="list-h">
+    <section class="card" id="board-card" aria-labelledby="board-h" hidden>
+      <div class="card-head">
+        <h2 id="board-h">Board</h2>
+        <span class="muted" style="font-size:13px">Drag a card to change its status, or use its arrows</span>
+      </div>
+      <div id="board"></div>
+    </section>
+
+    <section class="card" id="list-card" aria-labelledby="list-h">
       <div class="card-head">
         <h2 id="list-h">All projects</h2>
         <span class="muted" style="font-size:13px">Click a row to open details and milestones</span>
@@ -557,9 +588,118 @@ function renderAll() {
   renderTimeline();
   renderSidebar();
   renderTable();
+  if (view === 'board') renderBoard();
   $('timeline-row').hidden = view !== 'timeline';
-  $('tab-timeline').setAttribute('aria-selected', String(view === 'timeline'));
-  $('tab-list').setAttribute('aria-selected', String(view === 'list'));
+  $('board-card').hidden = view !== 'board';
+  $('list-card').hidden = view === 'board';
+  for (const v of ['timeline', 'board', 'list']) $(`tab-${v}`).setAttribute('aria-selected', String(view === v));
+}
+
+// ══════════════════════════════════════════
+//  Board: one row per category, one column per status in that category's pipeline
+// ══════════════════════════════════════════
+let boardDrag = null; // { id, cat } while a card is being dragged
+
+function renderBoard() {
+  const list = visibleProjects();
+  const lanes = db.categories.filter(c => catFilter === 'all' || c.id === catFilter).map(cat => {
+    const projects = list.filter(p => p.category_id === cat.id);
+    if (catFilter === 'all' && !projects.length) return null; // keep the board to categories in use
+    const head = h('div', { class: 'lane-head' },
+      h('span', { class: 'swatch', style: { background: cat.color } }), cat.name,
+      h('span', { class: 'muted', text: `${projects.length} project${projects.length === 1 ? '' : 's'}` }));
+    let cols;
+    if (cat.pipeline === 'none') {
+      cols = [boardColumn(cat, null, 'No statuses', projects)];
+    } else {
+      const statuses = statusesFor(cat);
+      // A status that isn't in the pipeline (shouldn't happen) lands in the first column.
+      const at = p => (statuses.includes(p.status) ? p.status : statuses[0]);
+      cols = statuses.map(s => boardColumn(cat, s, s, projects.filter(p => at(p) === s)));
+    }
+    return h('div', { class: 'lane', 'data-lane': cat.name }, head, h('div', { class: 'lane-cols' }, cols));
+  }).filter(Boolean);
+  $('board').replaceChildren(...(lanes.length ? lanes : [h('div', { class: 'empty', text: db.projects.length ? 'No projects match this filter.' : 'No projects yet. Use “New project” to add one.' })]));
+}
+
+function boardColumn(cat, status, label, projects) {
+  const col = h('div', { class: 'col', role: 'list', 'aria-label': `${cat.name}: ${label}`, 'data-status': status ?? '' },
+    h('div', { class: 'col-head' }, h('span', { text: label }), h('span', { text: String(projects.length) })),
+    projects.map(p => boardCard(p, cat)));
+  if (status !== null) {
+    const accepts = () => boardDrag && boardDrag.cat === cat.id;
+    col.addEventListener('dragover', e => { if (accepts()) { e.preventDefault(); col.classList.add('drop'); } });
+    col.addEventListener('dragleave', e => { if (!col.contains(e.relatedTarget)) col.classList.remove('drop'); });
+    col.addEventListener('drop', e => {
+      col.classList.remove('drop');
+      if (!accepts()) return;
+      e.preventDefault();
+      moveProject(boardDrag.id, status);
+    });
+  }
+  return col;
+}
+
+function boardCard(p, cat) {
+  const t = todayStr();
+  const open = milestonesOf(p.id).filter(m => !m.done);
+  const overdue = open.filter(m => m.due_date < t).length;
+  const next = open.find(m => m.due_date >= t);
+  const statuses = statusesFor(cat);
+  const i = statuses.indexOf(p.status);
+  const movable = cat.pipeline !== 'none';
+  const card = h('div', { class: 'bcard', role: 'listitem', 'data-project-id': p.id, draggable: movable ? 'true' : null },
+    h('button', { type: 'button', class: 'bcard-title', text: p.title, onclick: () => openDrawer(p.id) }),
+    p.next_action ? h('div', { class: 'bcard-meta', text: p.next_action }) : null,
+    h('div', { class: 'bcard-badges' },
+      overdue ? h('span', { class: 'badge red', text: `${overdue} overdue` }) : null,
+      next ? h('span', { class: 'badge', text: `Next ${fmtDate(next.due_date)}` }) : null,
+      p.waiting_on ? h('span', { class: 'badge', text: `Waiting: ${p.waiting_on}` }) : null,
+      isStale(p) ? h('span', { class: 'badge amber', text: 'Stale' }) : null,
+      p.archived ? h('span', { class: 'badge', text: 'Archived' }) : null),
+    movable ? h('div', { class: 'bcard-move' },
+      h('button', { type: 'button', 'aria-label': i > 0 ? `Move ${p.title} back to ${statuses[i - 1]}` : `${p.title} is at the first status`, disabled: i <= 0, text: '◀', onclick: () => moveProject(p.id, statuses[i - 1], 'back') }),
+      h('button', { type: 'button', 'aria-label': i < statuses.length - 1 ? `Move ${p.title} forward to ${statuses[i + 1]}` : `${p.title} is at the last status`, disabled: i < 0 || i >= statuses.length - 1, text: '▶', onclick: () => moveProject(p.id, statuses[i + 1], 'forward') }))
+      : null);
+  if (movable) {
+    card.addEventListener('dragstart', e => {
+      boardDrag = { id: p.id, cat: cat.id };
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', p.title);
+    });
+    card.addEventListener('dragend', () => {
+      boardDrag = null;
+      card.classList.remove('dragging');
+      document.querySelectorAll('.col.drop').forEach(c => c.classList.remove('drop'));
+    });
+  }
+  return card;
+}
+
+/** Change a project's status, showing it at once and undoing it if the save fails. */
+async function moveProject(id, status, via) {
+  const p = db.projects.find(x => x.id === id);
+  if (!p || !status || p.status === status) return;
+  const prev = p.status;
+  p.status = status;
+  renderAll();
+  try {
+    const { project } = await api('project.save', { id, project: { ...p, status } });
+    Object.assign(p, project);
+    renderAll();
+    toast(`Moved to ${status}`);
+  } catch (e) {
+    p.status = prev;
+    renderAll();
+    toast(e.message);
+  }
+  // Keep keyboard users on the card they just moved.
+  if (via && db) {
+    const card = document.querySelector(`.bcard[data-project-id="${id}"]`);
+    const btn = card && card.querySelector(via === 'back' ? '.bcard-move button:first-child' : '.bcard-move button:last-child');
+    (btn && !btn.disabled ? btn : card?.querySelector('.bcard-title'))?.focus();
+  }
 }
 
 function renderFilters() {
@@ -1123,6 +1263,7 @@ $('menu-archived').addEventListener('click', () => { closeMenu(); showArchived =
 $('menu-export').addEventListener('click', () => { closeMenu(); exportData(); });
 $('tab-timeline').addEventListener('click', () => { view = 'timeline'; renderAll(); });
 $('tab-list').addEventListener('click', () => { view = 'list'; renderAll(); });
+$('tab-board').addEventListener('click', () => { view = 'board'; renderAll(); });
 $('cat-filter').addEventListener('change', e => { catFilter = e.target.value; renderAll(); });
 $('new-project').addEventListener('click', () => {
   if (!db.categories.length) return toast('Add a category first (⋯ → Manage categories).');
@@ -1144,7 +1285,7 @@ function lock(msg, info = false) {
   clearTimeout(idleTimer);
   closeOverlays();
   closeMenu();
-  ['kpis', 'timeline', 'win-controls', 'next-list', 'wait-list', 'project-rows', 'drawer', 'modal'].forEach(id => $(id).replaceChildren());
+  ['kpis', 'timeline', 'win-controls', 'next-list', 'wait-list', 'project-rows', 'board', 'drawer', 'modal'].forEach(id => $(id).replaceChildren());
   showPin(msg, info);
 }
 
