@@ -145,7 +145,7 @@
    */
   // Styles travel with the component so both pages render it the same way.
   const CSS = `
-.tl{--tl-line:#27272a;--tl-grid:#222226;--tl-muted:#a1a1aa;--tl-today:#60a5fa;--tl-conf:#a78bfa;--tl-red:#f87171;
+.tl{--tl-line:#27272a;--tl-grid:#222226;--tl-muted:#a1a1aa;--tl-today:#60a5fa;--tl-conf:#a78bfa;--tl-red:#f87171;--tl-ms:#f0f0f0;--tl-row:#1f1f23;
   font-size:14px;min-width:640px;user-select:none}
 .tl-row{display:flex;align-items:stretch}
 .tl-name{width:var(--tl-name);flex-shrink:0;padding:12px 12px 12px 0;box-sizing:border-box;min-width:0}
@@ -156,13 +156,13 @@
 .tl-scale{flex:1;position:relative;height:28px;border-bottom:1px solid var(--tl-line)}
 .tl-tick{position:absolute;top:4px;font-size:12px;color:var(--tl-muted);white-space:nowrap;padding-left:4px}
 .tl-tick:not(.major){font-size:10px;opacity:.75}
-.tl-project{border-bottom:1px solid #1f1f23}
+.tl-project{border-bottom:1px solid var(--tl-row)}
 .tl-project.clickable{cursor:pointer}
 .tl-project.clickable:hover .tl-title,.tl-project.clickable:focus-visible .tl-title{color:#93c5fd}
 .tl-project:focus-visible{outline:2px solid var(--tl-today);outline-offset:-2px;border-radius:6px}
 .tl-track{flex:1;position:relative;min-height:64px}
 .tl-compact .tl-track{min-height:44px}
-.tl-compact .tl-name{padding:8px 12px 8px 0;font-size:14px}
+.tl-compact .tl-name{padding:8px 12px 8px 0;font-size:14px;display:flex;align-items:center}
 .tl-grid{position:absolute;top:0;bottom:0;width:1px;background:var(--tl-grid)}
 .tl-today{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--tl-today);z-index:2}
 .tl-mark{position:absolute;top:0;bottom:0;width:0;border-left:2px dotted #71717a;z-index:1}
@@ -178,10 +178,10 @@
 .tl-bar-label{overflow:hidden;text-overflow:ellipsis}
 .tl-arrow{font-size:16px;line-height:1;opacity:.85}
 .tl-arrow-right{margin-left:auto}
-.tl-ms{position:absolute;top:50%;width:12px;height:12px;background:#f0f0f0;transform:translate(-50%,-50%) rotate(45deg);z-index:3;box-sizing:border-box}
+.tl-ms{position:absolute;top:50%;width:12px;height:12px;transform:translate(-50%,-50%) rotate(45deg);z-index:3;box-sizing:border-box;background:var(--tl-ms)}
 .tl-compact .tl-ms{width:10px;height:10px}
 .tl-ms-overdue{background:var(--tl-red)}
-.tl-ms-done{background:transparent;border:2px solid #f0f0f0}
+.tl-ms-done{background:transparent;border:2px solid var(--tl-ms)}
 .tl-labels{flex:1;position:relative;height:28px;font-size:12px}
 .tl-label{position:absolute;top:8px;transform:translateX(-50%);white-space:nowrap;color:var(--tl-muted)}
 .tl-label-today{color:#93c5fd}

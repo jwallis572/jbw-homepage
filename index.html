@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="timeline.js"></script>
 
   <!-- No-flash theme + accent init — runs sync before paint -->
   <script>
@@ -384,6 +385,30 @@
     .dash-grid.one-widget > #admin-slot { grid-row: 1; }
     .dash-grid.radar-only > .radar-card { grid-row: 1; }
     #radar-iframe { height: 420px; }
+
+    /* ── Projects strip (timeline only; the whole card opens /projects in a new tab) ── */
+    .projects-strip {
+      display: block; margin-top: 1.5rem; color: var(--text-primary); text-decoration: none;
+      animation-delay: 480ms;
+    }
+    .projects-strip:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .strip-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .strip-head-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .strip-head .card-title { display: flex; align-items: center; gap: 10px; }
+    .strip-chip { font-size: 0.78rem; padding: 4px 11px; border-radius: 9999px; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-primary); }
+    .strip-chip.overdue { background: rgba(248,113,113,0.14); border-color: rgba(248,113,113,0.35); color: #ef4444; }
+    [data-theme="dark"] .strip-chip.overdue { color: #fca5a5; }
+    .strip-open { font-size: 0.88rem; color: var(--accent); white-space: nowrap; }
+    .strip-body { overflow-x: auto; }
+    .strip-msg { color: var(--text-secondary); font-size: 0.9rem; padding: 0.25rem 0; }
+    .projects-strip .tl .tl-name { font-size: var(--tile-font-size); }
+    [data-theme="light"] .projects-strip .tl {
+      --tl-line: rgba(0,0,0,0.1); --tl-grid: rgba(0,0,0,0.06); --tl-row: rgba(0,0,0,0.06);
+      --tl-muted: rgba(10,10,10,0.55); --tl-ms: #27272a; --tl-today: #2563eb; --tl-conf: #7c3aed;
+    }
+    [data-theme="light"] .projects-strip .tl-label-today { color: #1d4ed8; }
+    [data-theme="light"] .projects-strip .tl-bar { color: #334155; }
+    [data-theme="light"] .projects-strip .tl-label-conference { color: #6d28d9; }
     .weather-card, .radar-card {
       background: var(--tile-bg);
       border: 1px solid var(--card-border);
@@ -711,6 +736,21 @@
       </div>
     </div>
   </div>
+
+  <a class="card projects-strip" id="projects-strip" href="/projects" target="_blank" rel="noopener">
+    <div class="strip-head">
+      <div class="strip-head-left">
+        <span class="card-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h7M3 12h12M3 18h9"></path><circle cx="18" cy="6" r="2"></circle><circle cx="20" cy="18" r="2"></circle></svg>
+          Projects
+        </span>
+        <span class="strip-chip" id="strip-active" hidden></span>
+        <span class="strip-chip overdue" id="strip-overdue" hidden></span>
+      </div>
+      <span class="strip-open">Open dashboard →</span>
+    </div>
+    <div class="strip-body" id="strip-body"><div class="strip-msg">Loading timeline…</div></div>
+  </a>
 </div>
 
 <footer>Jordan's Start Page</footer>
@@ -1999,6 +2039,41 @@ function renderWeather(d) {
 setInterval(fetchWeather, 10 * 60 * 1000);
 
 // ══════════════════════════════════════════
+//  Projects strip (public tile data from /api/timeline; never private fields)
+// ══════════════════════════════════════════
+async function loadProjectsStrip() {
+  const body = document.getElementById('strip-body');
+  const msg = text => {
+    const d = document.createElement('div');
+    d.className = 'strip-msg';
+    d.textContent = text;
+    body.replaceChildren(d);
+  };
+  let data;
+  try {
+    const r = await fetch('/api/timeline');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    data = await r.json();
+  } catch {
+    return msg('Projects timeline unavailable right now.');
+  }
+  const chip = (id, n, label) => {
+    const el = document.getElementById(id);
+    el.textContent = `${n} ${label}`;
+    el.hidden = !n && id === 'strip-overdue';
+  };
+  chip('strip-active', data.counts.active, 'active');
+  chip('strip-overdue', data.counts.overdue, 'overdue');
+  if (!data.projects.length) return msg('No projects yet. Open dashboard to add one.');
+  const T = window.JBWTimeline;
+  if (!T) return msg('Projects timeline unavailable right now.');
+  const today = T.parseDay(data.today) || new Date();
+  T.render(body, { projects: data.projects, deadlines: data.deadlines }, T.computeWindow(data.window, today), today, {
+    compact: true, nameWidth: window.innerWidth < 600 ? 130 : 220,
+  });
+}
+
+// ══════════════════════════════════════════
 //  PWA
 // ══════════════════════════════════════════
 if ('serviceWorker' in navigator) {
@@ -2027,6 +2102,7 @@ if ('serviceWorker' in navigator) {
 
   updateClock();
   fetchWeather();
+  loadProjectsStrip();
   await loadLinks();
   setupAllLinkTouchDnD();
   pullAndApplySettings(); // async, no-await — syncs cloud prefs after local paint
