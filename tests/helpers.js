@@ -9,7 +9,7 @@ export const FIXED_NOW = new Date('2026-10-19T10:00:00-05:00');
 export const ADMIN_LINKS = [
   'Residency Tracking', 'New Innovations', 'ECMO Shift Sign-Up',
   'Residency Conference Tracker', 'Residency Program Dashboard',
-  'Shift Admin Scheduling', 'UTH VPN',
+  'Shift Admin Scheduling', 'UTH VPN', 'Residency Guide 26-27',
 ];
 export const WORK_LINKS = [
   'MHH EPIC', 'LBJ EPIC', 'OpenEvidence', 'MD Calc', 'EM Houston',

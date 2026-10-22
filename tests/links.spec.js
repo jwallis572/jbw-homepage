@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
   await waitForLinks(page);
 });
 
-test('Residency Admin card has its 7 links', async ({ page }) => {
+test('Residency Admin card has its links', async ({ page }) => {
   const card = page.locator('#admin-slot .card');
   await expect(card.locator('.card-title')).toHaveText('📋 Residency Admin');
   const got = await labels(card);
@@ -36,6 +36,6 @@ test('every link is https and opens in a new tab', async ({ page }) => {
 
 test('admin links use Font Awesome icons', async ({ page }) => {
   const icons = await page.locator('#admin-slot .link-icon').evaluateAll(is => is.map(i => i.className));
-  expect(icons).toHaveLength(7);
+  expect(icons).toHaveLength(ADMIN_LINKS.length);
   for (const c of icons) expect(c).toMatch(/\bfa-(solid|regular|brands)\b.*\bfa-[a-z-]+/);
 });
