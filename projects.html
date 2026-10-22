@@ -1015,7 +1015,7 @@ function openCategories(editing = null) {
       const i = db.categories.findIndex(x => x.id === saved.id);
       if (i >= 0) db.categories[i] = saved; else db.categories.push(saved);
       renderAll();
-      openCategories();
+      if (!$('modal').hidden) openCategories(); // don't reopen a window closed while saving
       toast(editing ? 'Category saved' : 'Category added');
     } catch (e) { toast(e.message); }
   };
@@ -1068,7 +1068,7 @@ function openDeadlines(editing = null) {
       const i = db.deadlines.findIndex(x => x.id === deadline.id);
       if (i >= 0) db.deadlines[i] = deadline; else db.deadlines.push(deadline);
       renderAll();
-      openDeadlines();
+      if (!$('modal').hidden) openDeadlines(); // don't reopen a window closed while saving
       toast(editing ? 'Saved' : 'Added');
     } catch (e) { toast(e.message); }
   };

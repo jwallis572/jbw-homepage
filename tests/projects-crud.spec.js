@@ -142,6 +142,34 @@ test('the "none" pipeline hides status, and an empty category can be deleted', a
   expect(store.tables.categories.some(c => c.name === 'Life events')).toBe(false);
 });
 
+test('closing a window while its save is still in flight keeps it closed', async ({ page }) => {
+  const { store } = await openUnlocked(page);
+  // Slow every dashboard write down so Escape lands before the response.
+  await page.route('**/api/projects', async route => {
+    if (route.request().postDataJSON()?.action !== 'load') await new Promise(r => setTimeout(r, 600));
+    await route.fallback();
+  });
+  for (const [menu, fill, save, saved] of [
+    ['#menu-categories', () => page.locator('#cat-name').fill('Slow save'), '#cat-save',
+      () => store.tables.categories.some(c => c.name === 'Slow save')],
+    ['#menu-deadlines', async () => { await page.locator('#dl-name').fill('Slow deadline'); await page.locator('#dl-date').fill('2026-12-01'); }, '#dl-save',
+      () => store.tables.deadlines.some(d => d.name === 'Slow deadline')],
+  ]) {
+    await page.locator('#more-btn').click();
+    await page.locator(menu).click();
+    await fill();
+    await page.locator(save).click();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#modal')).toBeHidden();
+    await expect.poll(saved).toBe(true);
+    await page.waitForTimeout(100); // let the page handle the response
+    await expect(page.locator('#modal')).toBeHidden();
+    await expect(page.locator('#scrim')).toBeHidden();
+  }
+  await page.locator('#new-project').click(); // not blocked by a leftover backdrop
+  await expect(page.locator('#drawer')).toBeVisible();
+});
+
 test('a conference deadline appears on the timeline; hidden ones do not', async ({ page }) => {
   const { store } = await openUnlocked(page);
   await expect(page.locator('#timeline .tl-label-conference')).toHaveText(['CHEST abstract']); // Sep 2026 – May 2027 window

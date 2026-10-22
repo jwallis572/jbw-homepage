@@ -6,10 +6,11 @@ export const WEATHER_FIXTURE = JSON.parse(
 // Monday 19 Oct 2026, 10:00 in Houston: the first day of the weather fixture.
 export const FIXED_NOW = new Date('2026-10-19T10:00:00-05:00');
 
+// The live order in Supabase (Jordan reorders these in edit mode; update this when that happens).
 export const ADMIN_LINKS = [
-  'Residency Tracking', 'New Innovations', 'ECMO Shift Sign-Up',
-  'Residency Conference Tracker', 'Residency Program Dashboard',
-  'Shift Admin Scheduling', 'UTH VPN', 'Residency Guide 26-27',
+  'Residency Guide 26-27', 'Residency Program Dashboard', 'New Innovations',
+  'Residency Tracking', 'Residency Conference Tracker', 'ECMO Shift Sign-Up',
+  'Shift Admin Scheduling', 'UTH VPN',
 ];
 export const WORK_LINKS = [
   'MHH EPIC', 'LBJ EPIC', 'OpenEvidence', 'MD Calc', 'EM Houston',
@@ -37,9 +38,14 @@ export async function stubNetwork(page, { weather = WEATHER_FIXTURE, weatherStat
     ? route.fulfill({ status: timeline.status, contentType: 'application/json', body: '{"error":"upstream"}' })
     : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(timeline) })));
   await page.route('**/api/home', async route => {
-    const res = await route.fetch();
-    if (!res.ok()) return route.fulfill({ response: res });
-    await route.fulfill({ response: res, json: { ...(await res.json()), settings: null } });
+    // A test can finish while this is still in flight; the closed page then rejects. Ignore that.
+    try {
+      const res = await route.fetch();
+      if (!res.ok()) return await route.fulfill({ response: res });
+      await route.fulfill({ response: res, json: { ...(await res.json()), settings: null } });
+    } catch (err) {
+      if (!/closed/i.test(String(err))) throw err;
+    }
   });
 
   await page.route('https://api.open-meteo.com/**', route =>
