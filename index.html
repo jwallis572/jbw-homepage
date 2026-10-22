@@ -590,6 +590,38 @@
     }
     .toast.show { transform: translateX(-50%) translateY(0); visibility: visible; transition-delay: 0s; }
 
+    /* ── PIN modal (edit mode) ── */
+    .pin-modal {
+      position: fixed; inset: 0; z-index: 3000;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+      background: rgba(0,0,0,0.5);
+      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    }
+    .pin-modal[hidden] { display: none; }
+    .pin-card {
+      width: 100%; max-width: 360px; padding: 1.75rem 1.5rem 1.25rem;
+      border-radius: 20px; background: var(--panel-bg); border: 1px solid var(--card-border);
+      color: var(--text-primary); text-align: center;
+    }
+    .pin-card h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .pin-sub { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem; }
+    .pin-boxes { display: flex; gap: 10px; justify-content: center; }
+    .pin-box {
+      width: 52px; height: 60px; border-radius: 12px; text-align: center;
+      font-size: 1.6rem; font-family: 'Inter', sans-serif; color: var(--text-primary);
+      background: var(--input-bg); border: 1px solid var(--input-border); outline: none;
+    }
+    .pin-box:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-20); }
+    .pin-box:disabled { opacity: 0.4; }
+    .pin-msg { min-height: 1.3em; margin: 0.9rem 0 0.4rem; font-size: 0.85rem; color: #ef4444; }
+    .pin-msg.info { color: var(--text-secondary); }
+    .pin-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .pin-link {
+      background: none; border: none; color: var(--accent); cursor: pointer;
+      font: inherit; font-size: 0.85rem; min-height: 44px; padding: 0 4px;
+    }
+    .pin-actions .btn-cancel { min-height: 44px; }
+
     footer {
       text-align: center; margin-top: 4rem; padding-bottom: 2rem;
       opacity: 0.3; font-size: 0.8rem;
@@ -773,9 +805,28 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<!-- PIN prompt for edit mode -->
+<div class="pin-modal" id="pin-modal" role="dialog" aria-modal="true" aria-labelledby="pin-title" hidden>
+  <div class="pin-card">
+    <h2 id="pin-title">Enter PIN to edit</h2>
+    <p class="pin-sub">Editing links and syncing settings needs your 4-digit PIN.</p>
+    <div class="pin-boxes" id="pin-boxes">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="PIN digit 1">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="PIN digit 2">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="PIN digit 3">
+      <input class="pin-box" type="password" inputmode="numeric" autocomplete="off" maxlength="1" aria-label="PIN digit 4">
+    </div>
+    <p class="pin-msg" id="pin-msg" role="alert"></p>
+    <div class="pin-actions">
+      <button class="pin-link" id="pin-forgot" type="button">Forgot PIN?</button>
+      <button class="btn-cancel" id="pin-cancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════
-//  Supabase
+//  Supabase (reads only; every write goes through /api with a PIN session)
 // ══════════════════════════════════════════
 const { createClient } = window.supabase;
 const SB_URL = 'https://rrjnvgufodklgkrnhzwu.supabase.co';
@@ -838,17 +889,23 @@ function escAttr(s) {
 // ══════════════════════════════════════════
 //  Cross-device Settings Sync (Supabase)
 // ══════════════════════════════════════════
+// Changes always apply locally. They reach the cloud only while edit mode is unlocked; until then
+// they are flagged pending, and a pending browser keeps its own settings instead of pulling the
+// cloud copy on load. The next unlock pushes them.
+const SETTINGS_PENDING = 'jordan_start_settings_pending';
 let _syncTimer, _syncPaused = false;
 
 function scheduleSync() {
   if (_syncPaused) return;
+  localStorage.setItem(SETTINGS_PENDING, '1');
+  if (!editToken) return;
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(pushSettings, 800);
 }
 
 async function pushSettings() {
-  const { error } = await sb.from('settings').upsert({
-    key: 'prefs',
+  if (!editToken) return;
+  const { ok, status, data } = await api('settings', {
     value: {
       theme:        get('theme'),
       accent:       get('accent'),
@@ -860,12 +917,14 @@ async function pushSettings() {
       tile_alpha:   state.tileAlpha,
       tile_font:    state.tileFontSize,
     },
-    updated_at: new Date().toISOString(),
   });
-  if (error) console.warn('Settings sync failed:', error.message);
+  if (ok) localStorage.removeItem(SETTINGS_PENDING);
+  else if (status === 401) showToast(data.message); // still pending; syncs after the next unlock
+  else console.warn('Settings sync failed:', data.message);
 }
 
 async function pullAndApplySettings() {
+  if (localStorage.getItem(SETTINGS_PENDING)) return; // local changes win until the next unlock syncs them
   const { data, error } = await sb.from('settings')
     .select('value').eq('key', 'prefs').maybeSingle();
   if (error || !data) return;
@@ -915,6 +974,7 @@ const state = {
 };
 
 let editMode = false;
+let editToken = null; // PIN session for writes; memory only (see Edit Mode below)
 
 function getOrder() {
   return state.cardOrder || SECTIONS.map(s => s.id);
@@ -1380,11 +1440,11 @@ async function handleUpdateLink(li, link) {
   const icon  = li.querySelector('.ef-icon').value.trim() || 'fa-solid fa-link';
   if (!label || !url) { showToast('Enter a label and URL'); return; }
 
-  const { error } = await sb.from('links').update({ label, url, icon }).eq('id', link.id);
-  if (error) { showToast('Error saving — try again'); console.error(error); return; }
+  const { ok, data } = await api('links', { action: 'update', id: link.id, link: { label, url, icon } });
+  if (!ok) { showToast(data.message || 'Error saving — try again'); return; }
 
   const idx = linksCache.findIndex(l => l.id === link.id);
-  if (idx >= 0) linksCache[idx] = { ...linksCache[idx], label, url, icon };
+  if (idx >= 0) linksCache[idx] = { ...linksCache[idx], ...data.link };
 
   const newLi = buildLinkItem(linksCache[idx]);
   li.replaceWith(newLi);
@@ -1392,8 +1452,8 @@ async function handleUpdateLink(li, link) {
 }
 
 async function handleDeleteLink(id, li) {
-  const { error } = await sb.from('links').delete().eq('id', id);
-  if (error) { showToast('Error deleting — try again'); console.error(error); return; }
+  const { ok, data } = await api('links', { action: 'delete', id });
+  if (!ok) { showToast(data.message || 'Error deleting — try again'); return; }
   linksCache = linksCache.filter(l => l.id !== id);
   li.remove();
   showToast('Link deleted');
@@ -1427,13 +1487,11 @@ async function handleAddLink(sectionId, form) {
   const sort_order = sectionLinks.length > 0
     ? Math.max(...sectionLinks.map(l => l.sort_order)) + 1 : 0;
 
-  const { data, error } = await sb.from('links')
-    .insert({ section: sectionId, label, url, icon, sort_order })
-    .select().single();
-  if (error) { showToast('Error adding link'); console.error(error); return; }
+  const { ok, data } = await api('links', { action: 'insert', link: { section: sectionId, label, url, icon, sort_order } });
+  if (!ok) { showToast(data.message || 'Error adding link'); return; }
 
-  linksCache.push(data);
-  document.getElementById(`links-${sectionId}`).appendChild(buildLinkItem(data));
+  linksCache.push(data.link);
+  document.getElementById(`links-${sectionId}`).appendChild(buildLinkItem(data.link));
   form.querySelectorAll('input').forEach(i => { i.value = ''; });
   form.querySelector('.af-icon').value = 'fa-solid fa-link';
   form.style.display = 'none';
@@ -1495,22 +1553,13 @@ function setupLinkDnD(sectionId, ul) {
 async function saveReorderedSection(sectionId) {
   const ul = document.getElementById(`links-${sectionId}`);
   if (!ul) return;
-  const items = [...ul.querySelectorAll('li[data-link-id]')];
-  const results = await Promise.all(items.map((li, idx) => {
-    const id = li.dataset.linkId;
-    const cached = linksCache.find(l => l.id === id);
+  const ids = [...ul.querySelectorAll('li[data-link-id]')].map(li => li.dataset.linkId);
+  ids.forEach((id, idx) => {
+    const cached = linksCache.find(l => String(l.id) === id);
     if (cached) cached.sort_order = idx;
-    return sb.from('links').update({ sort_order: idx }).eq('id', id).select();
-  }));
-  const errored  = results.filter(r => r.error);
-  const silenced = results.filter(r => !r.error && (!r.data || r.data.length === 0));
-  if (errored.length) {
-    console.error('saveReorderedSection errors:', errored.map(r => r.error));
-    showToast('Error saving link order');
-  } else if (silenced.length) {
-    console.warn('saveReorderedSection: Supabase RLS blocked update — no rows written');
-    showToast('Order not saved: Supabase RLS policy needed');
-  }
+  });
+  const { ok, data } = await api('links', { action: 'reorder', section: sectionId, ids });
+  if (!ok) showToast(data.message || 'Error saving link order');
 }
 
 // ══════════════════════════════════════════
@@ -1669,13 +1718,152 @@ function setupTouchDnD() {
 // ══════════════════════════════════════════
 //  Edit Mode
 // ══════════════════════════════════════════
-document.getElementById('edit-mode-btn').addEventListener('click', () => {
-  editMode = !editMode;
-  document.body.classList.toggle('edit-mode', editMode);
+// Turning edit mode on needs the PIN. The session token lives only in this variable: never in
+// storage or cookies, so a reload, a new tab, leaving edit mode or 30 idle minutes locks it again.
+const EDIT_IDLE_MS = 30 * 60 * 1000;
+let _editIdleTimer;
+
+/** POST to one of our /api functions with the edit session. Always resolves to { ok, status, data }. */
+async function api(name, body) {
+  let r;
+  try {
+    r = await fetch(`/api/${name}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(editToken && { Authorization: `Bearer ${editToken}` }) },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { ok: false, status: 0, data: { message: 'Could not reach the server' } };
+  }
+  const data = await r.json().catch(() => ({}));
+  if (name !== 'auth') {
+    if (data.token && editToken) { editToken = data.token; touchEditSession(); }
+    if (r.status === 401) {
+      data.message = 'Edit session expired. Enter your PIN again.'; // callers toast data.message
+      endEditSession();
+    }
+  }
+  return { ok: r.ok, status: r.status, data };
+}
+
+function touchEditSession() {
+  clearTimeout(_editIdleTimer);
+  if (editToken) _editIdleTimer = setTimeout(() => endEditSession('Edit mode locked after 30 minutes idle'), EDIT_IDLE_MS);
+}
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { if (editToken) touchEditSession(); }));
+
+function setEditMode(on) {
+  editMode = on;
+  document.body.classList.toggle('edit-mode', on);
   const btn = document.getElementById('edit-mode-btn');
-  btn.classList.toggle('active', editMode);
-  btn.textContent = editMode ? '✅ Done Editing' : '✏️ Edit Links';
+  btn.classList.toggle('active', on);
+  btn.textContent = on ? '✅ Done Editing' : '✏️ Edit Links';
+}
+
+function endEditSession(msg) {
+  const wasOn = editMode || editToken;
+  editToken = null;
+  clearTimeout(_editIdleTimer);
+  clearTimeout(_syncTimer);
+  setEditMode(false);
+  if (msg && wasOn) showToast(msg);
+}
+
+function startEditSession(token) {
+  editToken = token;
+  touchEditSession();
+  setEditMode(true);
+  if (localStorage.getItem(SETTINGS_PENDING)) pushSettings();
+  showToast('Edit mode unlocked');
+}
+
+document.getElementById('edit-mode-btn').addEventListener('click', () => {
+  if (editMode) endEditSession();
+  else openPinModal();
 });
+
+// ── PIN modal ──
+const pinModal  = document.getElementById('pin-modal');
+const pinBoxes  = [...document.querySelectorAll('#pin-boxes .pin-box')];
+const pinMsg    = document.getElementById('pin-msg');
+const pinForgot = document.getElementById('pin-forgot');
+let _pinBusy = false;
+
+function pinMessage(text, info = false) {
+  pinMsg.textContent = text || '';
+  pinMsg.classList.toggle('info', info);
+}
+
+function resetPinBoxes(disabled = false) {
+  pinBoxes.forEach(b => { b.value = ''; b.disabled = disabled; });
+  if (!disabled) pinBoxes[0].focus();
+}
+
+async function openPinModal() {
+  pinModal.hidden = false;
+  pinMessage('');
+  pinForgot.textContent = 'Forgot PIN?';
+  resetPinBoxes();
+  const { ok, data } = await api('auth', { action: 'status' });
+  if (!ok || pinModal.hidden) return;
+  if (!data.configured) {
+    pinForgot.textContent = 'Set up PIN';
+    pinMessage('No PIN yet. Use "Set up PIN" to get a setup link by email.', true);
+    resetPinBoxes(true);
+  } else if (data.locked) {
+    pinMessage(data.hard ? 'Locked. Use the reset link sent to your email.'
+      : `Locked for ${data.minutesLeft} min. Check your email for a reset link.`);
+    resetPinBoxes(true);
+  }
+}
+
+function closePinModal() {
+  pinModal.hidden = true;
+  resetPinBoxes(true);
+}
+
+async function submitPin() {
+  if (_pinBusy) return;
+  const pin = pinBoxes.map(b => b.value).join('');
+  if (!/^\d{4}$/.test(pin)) return;
+  _pinBusy = true;
+  const { ok, status, data } = await api('auth', { action: 'unlock', pin });
+  _pinBusy = false;
+  if (ok && data.token) {
+    closePinModal();
+    startEditSession(data.token);
+    return;
+  }
+  pinMessage(data.message || 'Something went wrong. Try again.');
+  resetPinBoxes(status === 423 || status === 409);
+}
+
+pinBoxes.forEach((box, i) => {
+  box.addEventListener('input', () => {
+    box.value = box.value.replace(/\D/g, '').slice(-1);
+    if (box.value && i < pinBoxes.length - 1) pinBoxes[i + 1].focus();
+    if (pinBoxes.every(b => b.value)) submitPin();
+  });
+  box.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !box.value && i > 0) pinBoxes[i - 1].focus();
+    if (e.key === 'Escape') closePinModal();
+  });
+  box.addEventListener('paste', e => {
+    const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 4);
+    if (!digits) return;
+    e.preventDefault();
+    pinBoxes.forEach((b, j) => { b.value = digits[j] || ''; });
+    pinBoxes[Math.min(digits.length, 3)].focus();
+    if (digits.length === 4) submitPin();
+  });
+});
+
+pinForgot.addEventListener('click', async () => {
+  await api('auth', { action: 'request-reset' });
+  pinMessage('If a PIN email is set up, a link is on its way. It expires in 30 minutes.', true);
+});
+document.getElementById('pin-cancel').addEventListener('click', closePinModal);
+pinModal.addEventListener('click', e => { if (e.target === pinModal) closePinModal(); });
 
 // ══════════════════════════════════════════
 //  Widget Visibility
@@ -1816,6 +2004,8 @@ if ('serviceWorker' in navigator) {
 //  Init
 // ══════════════════════════════════════════
 (async function init() {
+  // Restoring saved settings is not a change, so nothing syncs or gets flagged pending here.
+  _syncPaused = true;
   applyTheme(state.theme);
   applyAccent(state.accent);
   buildSwatches();
@@ -1823,6 +2013,7 @@ if ('serviceWorker' in navigator) {
 
   applyTileAlpha(state.tileAlpha);
   applyTileFontSize(state.tileFontSize);
+  _syncPaused = false;
 
   document.getElementById('seconds-toggle').checked = state.showSeconds;
   document.getElementById('weather-toggle').checked = state.showWeather;

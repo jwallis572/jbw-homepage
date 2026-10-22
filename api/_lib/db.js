@@ -7,6 +7,13 @@
 //   insertResetToken({token_hash, expires_at})
 //   findResetToken(token_hash)        -> row | null
 //   useResetToken(id, usedAt)         -> true if this call marked it used (single use)
+//
+// Homepage writes (api/links.js, api/settings.js):
+//   insertLink(fields)                -> inserted row
+//   updateLink(id, fields)            -> updated row | null if no such link
+//   deleteLink(id)                    -> true if a row was deleted
+//   setLinkOrder(section, ids)        -> number of links in that section that were updated
+//   upsertSettings(value, updatedAt)  -> the 'prefs' row
 
 export function createSupabaseStore({ url, secretKey, fetch = globalThis.fetch }) {
   if (!url || !secretKey) throw new Error('SUPABASE_URL and SUPABASE_SECRET_KEY must be set');
@@ -53,6 +60,35 @@ export function createSupabaseStore({ url, secretKey, fetch = globalThis.fetch }
         method: 'PATCH', body: { used_at: usedAt }, prefer: 'return=representation',
       });
       return rows.length === 1;
+    },
+    async insertLink(fields) {
+      const rows = await rest('links', { method: 'POST', body: fields, prefer: 'return=representation' });
+      return rows[0];
+    },
+    async updateLink(id, fields) {
+      const rows = await rest(`links?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH', body: fields, prefer: 'return=representation',
+      });
+      return rows[0] || null;
+    },
+    async deleteLink(id) {
+      const rows = await rest(`links?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', prefer: 'return=representation' });
+      return rows.length > 0;
+    },
+    async setLinkOrder(section, ids) {
+      const results = await Promise.all(ids.map((id, sort_order) =>
+        rest(`links?id=eq.${encodeURIComponent(id)}&section=eq.${encodeURIComponent(section)}`, {
+          method: 'PATCH', body: { sort_order }, prefer: 'return=representation',
+        })));
+      return results.filter(rows => rows.length > 0).length;
+    },
+    async upsertSettings(value, updatedAt) {
+      // Same upsert the browser used to do: conflict on the primary key (key = 'prefs').
+      const rows = await rest('settings', {
+        method: 'POST', body: { key: 'prefs', value, updated_at: updatedAt },
+        prefer: 'resolution=merge-duplicates,return=representation',
+      });
+      return rows[0];
     },
   };
 }
