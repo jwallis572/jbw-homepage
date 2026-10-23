@@ -256,6 +256,51 @@ const actions = {
     }
     return { category: await save(store, 'categories', id, row, 'category') };
   },
+  /**
+   * Edit a category's board columns (its statuses) and carry its projects along.
+   * columns:  [{ name, was? }] in order; `was` is the column's current name when it is kept or renamed.
+   * reassign: { removedName: newName } for removed columns that still hold projects.
+   * The category becomes a custom pipeline, so editing Research leaves QI (also research) as it was.
+   */
+  async 'category.statuses'({ id, columns, reassign }, { store }) {
+    const cat = await findRow(store, 'categories', id, 'category');
+    if (!Array.isArray(columns)) throw bad('columns must be a list.');
+    if (reassign !== undefined && (!reassign || typeof reassign !== 'object' || Array.isArray(reassign))) throw bad('reassign must be an object.');
+    const row = cleanCategory({
+      name: cat.name, color: cat.color, sort_order: cat.sort_order, pipeline: 'custom',
+      statuses: columns.map(c => (c && typeof c.name === 'string' ? c.name : '')),
+    });
+    if (row.statuses.length !== columns.length) throw bad('Every column needs a name.');
+
+    const old = statusesFor(cat);
+    const target = new Map(); // current status -> new status
+    columns.forEach((c, i) => {
+      if (c.was === undefined || c.was === null) return;
+      if (!old.includes(c.was) || target.has(c.was)) throw bad(`Unknown or repeated column: ${String(c.was).slice(0, 40)}`);
+      target.set(c.was, row.statuses[i]);
+    });
+    for (const [from, to] of Object.entries(reassign || {})) {
+      if (!old.includes(from) || target.has(from)) throw bad(`Only removed columns can be reassigned: ${from.slice(0, 40)}`);
+      if (!row.statuses.includes(to)) throw bad(`No column named ${to.slice(0, 40)}.`);
+      target.set(from, to);
+    }
+
+    const projects = (await store.listRows('projects')).filter(p => p.category_id === id);
+    const moves = [];
+    for (const p of projects) {
+      // No status (a "none" category) or one the pipeline never had: start in the first column.
+      const to = p.status && old.includes(p.status) ? target.get(p.status) : (target.get(p.status) ?? row.statuses[0]);
+      if (to === undefined) {
+        throw new HttpError(409, 'in_use', `“${p.status}” still has projects. Choose a column for them before removing it.`);
+      }
+      if (to !== p.status) moves.push([p.id, to]);
+    }
+
+    const category = await save(store, 'categories', id, row, 'category');
+    for (const [pid, status] of moves) await store.updateRow('projects', pid, { status });
+    return { category, moved: moves.length };
+  },
+
   async 'category.delete'({ id }, { store }) {
     await findRow(store, 'categories', id, 'category');
     const used = await store.countWhere('projects', 'category_id', id);

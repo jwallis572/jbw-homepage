@@ -127,3 +127,78 @@ test('unknown actions are rejected, and the deployed handler needs its secrets',
     Object.assign(process.env, saved);
   }
 });
+
+test.describe('category.statuses (board columns)', () => {
+  const R = ['Idea', 'IRB', 'Data Collection', 'Analysis', 'Writing', 'Submitted', 'Accepted', 'Presented', 'Published'];
+  const keep = names => names.map(n => ({ name: n, was: n }));
+
+  test('rename, add and reorder: projects follow their column and only this category changes', async () => {
+    const { store, call } = env();
+    const columns = keep(R).map(c => (c.was === 'Writing' ? { name: 'Drafting', was: 'Writing' } : c));
+    columns.splice(5, 0, { name: 'Revisions' }); // new column after Drafting
+    const res = await call({ action: 'category.statuses', id: 'cat-research', columns });
+    expect(res.status).toBe(200);
+    expect(res.body.moved).toBe(1);
+    expect(res.body.category).toMatchObject({ pipeline: 'custom', name: 'Research', color: '#60a5fa' });
+    expect(res.body.category.statuses).toEqual(['Idea', 'IRB', 'Data Collection', 'Analysis', 'Drafting', 'Revisions', 'Submitted', 'Accepted', 'Presented', 'Published']);
+    expect(store.tables.projects.find(p => p.id === 'p-case').status).toBe('Drafting');
+    expect(store.tables.projects.find(p => p.id === 'p-ecmo').status).toBe('Analysis');
+    expect(store.tables.projects.find(p => p.id === 'p-case').updated_at).toBe('2026-10-14T12:00:00Z'); // renames aren't activity
+    expect(store.tables.categories.find(c => c.id === 'cat-qi').pipeline).toBe('research');
+  });
+
+  test('swapping two names in one save maps each project correctly', async () => {
+    const { store, call } = env();
+    const columns = keep(R).map(c => (c.was === 'Analysis' ? { name: 'Writing', was: 'Analysis' }
+      : c.was === 'Writing' ? { name: 'Analysis', was: 'Writing' } : c));
+    expect((await call({ action: 'category.statuses', id: 'cat-research', columns })).body.moved).toBe(2);
+    expect(store.tables.projects.find(p => p.id === 'p-ecmo').status).toBe('Writing');
+    expect(store.tables.projects.find(p => p.id === 'p-case').status).toBe('Analysis');
+  });
+
+  test('removing a column with projects needs a destination', async () => {
+    const { store, call } = env();
+    const columns = keep(R.filter(s => s !== 'Writing'));
+    const refused = await call({ action: 'category.statuses', id: 'cat-research', columns });
+    expect(refused.status).toBe(409);
+    expect(refused.body.message).toContain('still has projects');
+    expect(store.tables.categories.find(c => c.id === 'cat-research').pipeline).toBe('research'); // nothing saved
+
+    const ok = await call({ action: 'category.statuses', id: 'cat-research', columns, reassign: { Writing: 'Submitted' } });
+    expect(ok.status).toBe(200);
+    expect(store.tables.projects.find(p => p.id === 'p-case').status).toBe('Submitted');
+    // An empty column can go without a destination.
+    const again = await call({ action: 'category.statuses', id: 'cat-research', columns: keep(ok.body.category.statuses.filter(s => s !== 'IRB')) });
+    expect(again.status).toBe(200);
+  });
+
+  test('a "none" category gains columns and its projects start in the first one', async () => {
+    const { store, call } = env();
+    store.tables.categories.push({ id: 'cat-none', name: 'Life', color: '#ffffff', pipeline: 'none', statuses: [], sort_order: 9 });
+    store.tables.projects.push({ ...store.tables.projects[0], id: 'p-life', category_id: 'cat-none', status: null });
+    const res = await call({ action: 'category.statuses', id: 'cat-none', columns: [{ name: 'Planning' }, { name: 'Doing' }, { name: 'Done' }] });
+    expect(res.body.category).toMatchObject({ pipeline: 'custom', statuses: ['Planning', 'Doing', 'Done'] });
+    expect(store.tables.projects.find(p => p.id === 'p-life').status).toBe('Planning');
+  });
+
+  test('bad column lists are rejected', async () => {
+    const { call } = env();
+    const bad = [
+      { columns: 'Idea' },
+      { columns: [] },
+      { columns: [{ name: '' }] },
+      { columns: [{ name: 'A' }, { name: 'a' }] },
+      { columns: [{ name: 'x'.repeat(41) }] },
+      { columns: Array.from({ length: 21 }, (_, i) => ({ name: `C${i}` })) },
+      { columns: [{ name: 'A', was: 'Nope' }] },
+      { columns: [{ name: 'A', was: 'Idea' }, { name: 'B', was: 'Idea' }] },
+      { columns: keep(R), reassign: { Idea: 'IRB' } }, // only removed columns can be reassigned
+      { columns: keep(R.filter(s => s !== 'Writing')), reassign: { Writing: 'Nowhere' } },
+    ];
+    for (const b of bad) {
+      const res = await call({ action: 'category.statuses', id: 'cat-research', ...b });
+      expect(res.status, JSON.stringify(b).slice(0, 80)).toBe(400);
+    }
+    expect((await call({ action: 'category.statuses', id: 'missing', columns: [{ name: 'A' }] })).status).toBe(404);
+  });
+});

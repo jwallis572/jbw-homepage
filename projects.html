@@ -142,6 +142,11 @@
     .lane-head { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; margin-bottom: 10px; }
     .lane-head .swatch { margin-right: 0; width: 12px; height: 12px; }
     .lane-head .muted { font-size: 13px; font-weight: 400; }
+    .lane-edit { margin-left: auto; min-height: 36px; font-weight: 400; }
+    .colrow { flex-wrap: nowrap; }
+    .colrow .grow { min-width: 0; }
+    .colrow.removed { opacity: .85; }
+    .colrow select { background: var(--card-2); border: 1px solid #3f3f46; border-radius: 10px; padding: 6px 10px; min-height: 36px; color: var(--text); color-scheme: dark; }
     .lane-cols { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
     .col { flex: 0 0 236px; background: var(--input); border-radius: 16px; padding: 10px; min-height: 120px; display: flex; flex-direction: column; gap: 8px; }
     .col.drop { box-shadow: inset 0 0 0 2px var(--accent); }
@@ -607,7 +612,9 @@ function renderBoard() {
     if (catFilter === 'all' && !projects.length) return null; // keep the board to categories in use
     const head = h('div', { class: 'lane-head' },
       h('span', { class: 'swatch', style: { background: cat.color } }), cat.name,
-      h('span', { class: 'muted', text: `${projects.length} project${projects.length === 1 ? '' : 's'}` }));
+      h('span', { class: 'muted', text: `${projects.length} project${projects.length === 1 ? '' : 's'}` }),
+      h('button', { type: 'button', class: 'small-btn lane-edit', 'data-edit-columns': cat.name, onclick: () => openColumnsEditor(cat) },
+        cat.pipeline === 'none' ? 'Add columns' : 'Edit columns'));
     let cols;
     if (cat.pipeline === 'none') {
       cols = [boardColumn(cat, null, 'No statuses', projects)];
@@ -675,6 +682,107 @@ function boardCard(p, cat) {
     });
   }
   return card;
+}
+
+/**
+ * Edit a category's board columns: rename, add, remove, reorder. Renames carry projects along;
+ * removing a column that holds projects asks where they go. Saved as that category's own list.
+ */
+function openColumnsEditor(cat) {
+  const modal = $('modal');
+  const inCat = db.projects.filter(p => p.category_id === cat.id);
+  const countOf = name => inCat.filter(p => p.status === name).length;
+  let seq = 0;
+  const rows = statusesFor(cat).map(s => ({ key: ++seq, was: s, name: s, removed: false, moveTo: null }));
+  const kept = () => rows.filter(r => !r.removed);
+
+  const paint = () => {
+    const list = h('div', { class: 'rows', id: 'columns-list' });
+    rows.forEach((r, i) => {
+      const n = r.was !== null ? countOf(r.was) : 0;
+      if (r.removed) {
+        const others = kept();
+        if (!others.some(o => o.key === r.moveTo)) { // default: the nearest kept column before it, else after it
+          const prev = rows.slice(0, i).reverse().find(o => !o.removed);
+          const next = rows.slice(i + 1).find(o => !o.removed);
+          r.moveTo = (prev || next || {}).key ?? null;
+        }
+        const pick = h('select', { 'aria-label': `Move projects from ${r.was} to`, 'data-move-from': r.was },
+          others.map(o => h('option', { value: String(o.key), text: o.name.trim() || '(unnamed)', selected: o.key === r.moveTo })));
+        pick.addEventListener('change', () => { r.moveTo = Number(pick.value); });
+        list.append(h('div', { class: 'row-item colrow removed', 'data-column': r.was ?? '' },
+          h('div', { class: 'grow' },
+            h('div', { style: { textDecoration: 'line-through' }, class: 'muted', text: r.was ?? r.name }),
+            n ? h('label', { class: 'muted', style: { fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' } },
+              `Move its ${n} project${n === 1 ? '' : 's'} to`, pick) : null),
+          h('button', { type: 'button', class: 'small-btn', style: { minHeight: '44px' }, onclick: () => { r.removed = false; paint(); } }, 'Undo')));
+        return;
+      }
+      const name = h('input', { class: 'input', type: 'text', value: r.name, maxlength: '40', 'aria-label': `Column ${kept().indexOf(r) + 1} name` });
+      name.addEventListener('input', () => {
+        r.name = name.value;
+        // Keep the row's button labels in step with its name (they read "Move <name> up", etc.).
+        name.closest('.colrow').querySelectorAll('[data-label]').forEach(b => b.setAttribute('aria-label', b.dataset.label.replace('%', r.name.trim() || 'column')));
+      });
+      const move = d => {
+        const j = i + d;
+        if (j < 0 || j >= rows.length) return;
+        [rows[i], rows[j]] = [rows[j], rows[i]];
+        paint();
+        modal.querySelector(`[data-key="${r.key}"] [data-dir="${d}"]`)?.focus();
+      };
+      list.append(h('div', { class: 'row-item colrow', 'data-key': String(r.key), 'data-column': r.was ?? '' },
+        h('div', { class: 'grow' }, name, n ? h('div', { class: 'muted', style: { fontSize: '12px', marginTop: '4px' }, text: `${n} project${n === 1 ? '' : 's'}` }) : null),
+        h('button', { type: 'button', class: 'btn icon-btn btn-ghost', 'data-dir': '-1', 'data-label': 'Move % up', 'aria-label': `Move ${r.name.trim() || 'column'} up`, disabled: i === 0, text: '↑', onclick: () => move(-1) }),
+        h('button', { type: 'button', class: 'btn icon-btn btn-ghost', 'data-dir': '1', 'data-label': 'Move % down', 'aria-label': `Move ${r.name.trim() || 'column'} down`, disabled: i === rows.length - 1, text: '↓', onclick: () => move(1) }),
+        h('button', { type: 'button', class: 'btn icon-btn btn-ghost', 'data-label': 'Remove %', 'aria-label': `Remove ${r.name.trim() || 'column'}`, text: '×', disabled: kept().length === 1, onclick: () => {
+          if (r.was === null) rows.splice(i, 1); else r.removed = true;
+          paint();
+        } })));
+    });
+
+    modal.replaceChildren(
+      h('h2', { id: 'modal-title', text: `Edit columns: ${cat.name}` }),
+      h('p', { class: 'muted', style: { margin: '0 0 14px', fontSize: '14px' }, text: cat.pipeline === 'none'
+        ? `Add the steps projects in ${cat.name} go through. Its projects start in the first column.`
+        : `These are the statuses for every project in ${cat.name}. The last column counts as done.` }),
+      list,
+      h('button', { type: 'button', class: 'small-btn', id: 'column-add', style: { minHeight: '44px' }, onclick: () => {
+        rows.push({ key: ++seq, was: null, name: '', removed: false, moveTo: null });
+        paint();
+        const inputs = modal.querySelectorAll('#columns-list input[type="text"]');
+        inputs[inputs.length - 1]?.focus();
+      } }, '+ Add column'),
+      h('div', { class: 'modal-foot' },
+        h('button', { type: 'button', class: 'btn', onclick: closeOverlays }, 'Cancel'),
+        h('button', { type: 'button', class: 'btn btn-primary', id: 'columns-save', onclick: save }, 'Save columns')));
+  };
+
+  async function save() {
+    const live = kept();
+    const names = live.map(r => r.name.trim());
+    if (!names.length) return toast('Keep at least one column.');
+    if (names.some(n => !n)) return toast('Every column needs a name.');
+    if (new Set(names.map(n => n.toLowerCase())).size !== names.length) return toast('Column names must be different.');
+    if (names.length > 20) return toast('Up to 20 columns.');
+    const reassign = {};
+    for (const r of rows) {
+      if (r.removed && r.was !== null && countOf(r.was)) reassign[r.was] = live.find(o => o.key === r.moveTo).name.trim();
+    }
+    try {
+      const { moved } = await api('category.statuses', {
+        id: cat.id, reassign,
+        columns: live.map(r => (r.was !== null ? { name: r.name.trim(), was: r.was } : { name: r.name.trim() })),
+      });
+      db = await api('load');
+      closeOverlays();
+      renderAll();
+      toast(moved ? `Columns saved · ${moved} project${moved === 1 ? '' : 's'} moved` : 'Columns saved');
+    } catch (e) { toast(e.message); }
+  }
+
+  paint();
+  openOverlay(modal);
 }
 
 /** Change a project's status, showing it at once and undoing it if the save fails. */
