@@ -368,6 +368,9 @@
     .card.drag-over { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-20); }
     .link-item.link-dragging { opacity: 0.4; }
     .link-item.link-drag-over { border-top: 2px solid var(--accent); }
+    .link-item.link-drag-over-after { border-bottom: 2px solid var(--accent); }
+    .card.link-drop-target { border-color: var(--accent) !important; }
+    body.edit-mode .links { min-height: 2rem; } /* an empty section still has somewhere to drop */
 
     /* ── Weather ── */
     /* Admin card (left, spans both rows) | forecast over radar (right) */
@@ -1406,7 +1409,7 @@ function buildCard(sec, links, animIdx, { pinned = false } = {}) {
   card.appendChild(addBtn);
   card.appendChild(addForm);
 
-  setupLinkDnD(sec.id, ul);
+  setupLinkDnD(sec.id, ul, card);
   return card;
 }
 
@@ -1414,6 +1417,7 @@ function buildLinkItem(link) {
   const li = document.createElement('li');
   li.className = 'link-item';
   li.dataset.linkId = link.id;
+  li.draggable = true; // dragstart only lets it go in edit mode
 
   const del = document.createElement('button');
   del.className = 'link-delete-btn';
@@ -1544,74 +1548,142 @@ async function handleAddLink(sectionId, form) {
 }
 
 // ══════════════════════════════════════════
-//  Link row Drag & Drop (within section)
+//  Link row Drag & Drop (within and between sections)
 // ══════════════════════════════════════════
-function setupLinkDnD(sectionId, ul) {
-  let dragLi = null;
+// One drag at a time across every card. The whole card is a drop zone for links (rows, the space
+// under them, the header), so a link can land in any section, including an empty one.
+let linkDrag = null; // { li, from }
 
+const sectionOfUl = ul => ul.id.replace('links-', '');
+
+function clearLinkDropMarks() {
+  document.querySelectorAll('.link-drag-over, .link-drag-over-after')
+    .forEach(l => l.classList.remove('link-drag-over', 'link-drag-over-after'));
+  document.querySelectorAll('.card.link-drop-target').forEach(c => c.classList.remove('link-drop-target'));
+}
+
+// Where a link let go at height y over `card` goes: before the first row whose middle is below y,
+// else at the end of that card's list.
+function linkDropSpot(card, y, dragged) {
+  const ul = card.querySelector('ul.links');
+  const rows = [...ul.querySelectorAll('li.link-item')].filter(li => li !== dragged);
+  const before = rows.find(li => { const r = li.getBoundingClientRect(); return y < r.top + r.height / 2; }) || null;
+  return { ul, before, last: rows[rows.length - 1] || null };
+}
+
+function markLinkDrop(card, spot) {
+  clearLinkDropMarks();
+  card.classList.add('link-drop-target');
+  if (spot.before) spot.before.classList.add('link-drag-over');
+  else if (spot.last) spot.last.classList.add('link-drag-over-after');
+}
+
+function dropLink(li, from, spot) {
+  const was = { parent: li.parentNode, next: li.nextSibling };
+  spot.ul.insertBefore(li, spot.before);
+  if (li.parentNode === was.parent && li.nextSibling === was.next) return; // dropped where it was
+  const to = sectionOfUl(spot.ul);
+  if (to === from) saveReorderedSection(to);
+  else saveMovedLink(li.dataset.linkId, from, to);
+}
+
+function setupLinkDnD(sectionId, ul, card) {
   ul.addEventListener('dragstart', e => {
     const li = e.target.closest('li.link-item');
     if (!li || !editMode) { e.preventDefault(); return; }
-    dragLi = li;
+    linkDrag = { li, from: sectionId };
     li.classList.add('link-dragging');
     e.dataTransfer.effectAllowed = 'move';
-    e.stopPropagation();
+    e.dataTransfer.setData('text/plain', li.dataset.linkId);
+    e.stopPropagation(); // not a tile drag
   });
 
-  ul.addEventListener('dragover', e => {
+  // These run before the tile handlers on the same card (registered first), and
+  // stopImmediatePropagation keeps a link drag from also looking like a tile drag.
+  card.addEventListener('dragover', e => {
+    if (!linkDrag) return;
     e.preventDefault();
-    e.stopPropagation();
-    if (!dragLi) return;
-    const target = e.target.closest('li.link-item');
-    ul.querySelectorAll('li').forEach(l => l.classList.remove('link-drag-over'));
-    if (target && target !== dragLi) target.classList.add('link-drag-over');
+    e.stopImmediatePropagation();
+    e.dataTransfer.dropEffect = 'move';
+    markLinkDrop(card, linkDropSpot(card, e.clientY, linkDrag.li));
   });
 
-  ul.addEventListener('dragleave', e => {
-    if (!ul.contains(e.relatedTarget)) {
-      ul.querySelectorAll('li').forEach(l => l.classList.remove('link-drag-over'));
-    }
+  card.addEventListener('dragleave', e => {
+    if (linkDrag && !card.contains(e.relatedTarget)) clearLinkDropMarks();
   });
 
-  ul.addEventListener('drop', e => {
+  card.addEventListener('drop', e => {
+    if (!linkDrag) return;
     e.preventDefault();
-    e.stopPropagation();
-    const target = e.target.closest('li.link-item');
-    ul.querySelectorAll('li').forEach(l => l.classList.remove('link-drag-over'));
-    if (!dragLi || !target || dragLi === target) return;
-    const items = [...ul.children];
-    const si = items.indexOf(dragLi), ti = items.indexOf(target);
-    ul.insertBefore(dragLi, si < ti ? target.nextSibling : target);
-    saveReorderedSection(sectionId);
+    e.stopImmediatePropagation();
+    const { li, from } = linkDrag;
+    clearLinkDropMarks();
+    dropLink(li, from, linkDropSpot(card, e.clientY, li));
   });
+}
 
-  ul.addEventListener('dragend', e => {
-    if (dragLi) dragLi.classList.remove('link-dragging');
-    ul.querySelectorAll('li').forEach(l => l.classList.remove('link-drag-over'));
-    dragLi = null;
+// dragend fires on the dragged row, which may now sit in another card, so listen once on document.
+document.addEventListener('dragend', () => {
+  if (!linkDrag) return;
+  linkDrag.li.classList.remove('link-dragging');
+  clearLinkDropMarks();
+  linkDrag = null;
+});
+
+const sectionIds = sectionId =>
+  [...document.querySelectorAll(`#links-${sectionId} li[data-link-id]`)].map(li => li.dataset.linkId);
+
+function cacheOrder(ids, section) {
+  ids.forEach((id, idx) => {
+    const cached = linksCache.find(l => String(l.id) === id);
+    if (cached) Object.assign(cached, { sort_order: idx }, section && { section });
   });
+}
 
-  // Make items draggable only when in edit mode
-  ul.querySelectorAll('li.link-item').forEach(li => { li.draggable = true; });
+// After a failed save, show what the server really has instead of an order that didn't stick.
+async function reloadLinksFromServer() {
+  _homeData = undefined;
+  await loadLinks();
 }
 
 async function saveReorderedSection(sectionId) {
-  const ul = document.getElementById(`links-${sectionId}`);
-  if (!ul) return;
-  const ids = [...ul.querySelectorAll('li[data-link-id]')].map(li => li.dataset.linkId);
-  ids.forEach((id, idx) => {
-    const cached = linksCache.find(l => String(l.id) === id);
-    if (cached) cached.sort_order = idx;
-  });
+  if (!document.getElementById(`links-${sectionId}`)) return;
+  const ids = sectionIds(sectionId);
+  cacheOrder(ids);
   const { ok, data } = await api('links', { action: 'reorder', section: sectionId, ids });
-  if (!ok) showToast(data.message || 'Error saving link order');
+  if (!ok) { showToast(data.message || 'Error saving link order'); await reloadLinksFromServer(); }
+}
+
+async function saveMovedLink(id, from, to) {
+  const ids = sectionIds(to), from_ids = sectionIds(from);
+  cacheOrder(ids, to);
+  cacheOrder(from_ids);
+  const { ok, data } = await api('links', { action: 'move', id, from, to, ids, from_ids });
+  if (!ok) { showToast(data.message || 'Error moving link'); await reloadLinksFromServer(); }
 }
 
 // ══════════════════════════════════════════
-//  Link Touch Drag (within section, mobile)
+//  Link Touch Drag (within and between sections, mobile)
 // ══════════════════════════════════════════
+// Only a touch that starts on a link's ⠿ handle in edit mode is captured; any other touch scrolls.
 function setupAllLinkTouchDnD() {
-  let src = null, clone = null, activeUl = null;
+  let src = null, clone = null, from = null;
+
+  // The card under the finger that has a link list (the floating clone is hidden while we look).
+  function cardAt(x, y) {
+    if (clone) clone.style.display = 'none';
+    const el = document.elementFromPoint(x, y);
+    if (clone) clone.style.display = '';
+    const card = el && el.closest('.card');
+    return card && card.querySelector('ul.links') ? card : null;
+  }
+
+  function finish() {
+    if (clone) { clone.remove(); clone = null; }
+    clearLinkDropMarks();
+    if (src) src.style.opacity = '';
+    src = null; from = null;
+  }
 
   document.addEventListener('touchstart', e => {
     if (!editMode) return;
@@ -1619,8 +1691,9 @@ function setupAllLinkTouchDnD() {
     if (!handle) return;
     src = handle.closest('li.link-item');
     if (!src) return;
-    activeUl = src.closest('ul.links');
-    if (!activeUl) return;
+    const ul = src.closest('ul.links');
+    if (!ul) { src = null; return; }
+    from = sectionOfUl(ul);
     const rect = src.getBoundingClientRect();
     clone = src.cloneNode(true);
     Object.assign(clone.style, {
@@ -1638,32 +1711,22 @@ function setupAllLinkTouchDnD() {
     const t = e.touches[0];
     clone.style.left = (t.clientX - clone.offsetWidth / 2) + 'px';
     clone.style.top  = (t.clientY - clone.offsetHeight / 2) + 'px';
-    clone.style.display = 'none';
-    const el = document.elementFromPoint(t.clientX, t.clientY);
-    clone.style.display = '';
-    activeUl.querySelectorAll('li.link-item').forEach(l => l.classList.remove('link-drag-over'));
-    const over = el && el.closest('li.link-item');
-    if (over && over !== src && activeUl.contains(over)) over.classList.add('link-drag-over');
+    const card = cardAt(t.clientX, t.clientY);
+    if (card) markLinkDrop(card, linkDropSpot(card, t.clientY, src));
+    else clearLinkDropMarks();
     e.preventDefault();
   }, { passive: false });
 
   document.addEventListener('touchend', e => {
     if (!src) return;
     const t = e.changedTouches[0];
-    if (clone) clone.style.display = 'none';
-    const el = document.elementFromPoint(t.clientX, t.clientY);
-    if (clone) { clone.remove(); clone = null; }
-    if (activeUl) activeUl.querySelectorAll('li.link-item').forEach(l => l.classList.remove('link-drag-over'));
-    const target = el && el.closest('li.link-item');
-    if (target && target !== src && activeUl && activeUl.contains(target)) {
-      const items = [...activeUl.children];
-      const si = items.indexOf(src), ti = items.indexOf(target);
-      activeUl.insertBefore(src, si < ti ? target.nextSibling : target);
-      saveReorderedSection(activeUl.id.replace('links-', ''));
-    }
-    src.style.opacity = '';
-    src = null; activeUl = null;
+    const card = cardAt(t.clientX, t.clientY);
+    const li = src, fromSection = from;
+    finish();
+    if (card) dropLink(li, fromSection, linkDropSpot(card, t.clientY, li));
   });
+
+  document.addEventListener('touchcancel', () => { if (src) finish(); });
 }
 
 // ══════════════════════════════════════════
