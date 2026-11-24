@@ -7,14 +7,15 @@ export const WEATHER_FIXTURE = JSON.parse(
 export const FIXED_NOW = new Date('2026-10-19T10:00:00-05:00');
 
 // The live order in Supabase (Jordan reorders these in edit mode; update this when that happens).
+// Last updated 2026-11-23, after the links table was rebuilt and re-laid out.
 export const ADMIN_LINKS = [
   'Residency Guide 26-27', 'Residency Program Dashboard', 'New Innovations',
-  'Residency Tracking', 'Residency Conference Tracker', 'ECMO Shift Sign-Up',
-  'Shift Admin Scheduling', 'UTH VPN',
+  'Residency Tracking (Personal)', 'Residency Conference Tracker', 'ECMO Shift Sign-Up',
+  'Shift Admin Scheduling', 'UTHealth VPN',
 ];
 export const WORK_LINKS = [
   'MHH EPIC', 'LBJ EPIC', 'OpenEvidence', 'MD Calc', 'EM Houston',
-  'LBJ Guidelines', 'ECMO Drive', 'FOAM Cortex',
+  'LBJ Guidelines', 'ECMO Drive', 'FOAM Cortex', 'HFD ECPR App',
 ];
 
 /**
