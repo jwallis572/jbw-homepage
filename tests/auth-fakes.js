@@ -86,6 +86,13 @@ export function createMemoryStore(initial = {}) {
       links.splice(i, 1);
       return true;
     },
+    async moveLink(id, from, { section, sort_order }) {
+      await tick();
+      const row = links.find(l => l.id === id && l.section === from);
+      if (!row) return null;
+      Object.assign(row, { section, sort_order });
+      return { ...row };
+    },
     async setLinkOrder(section, ids) {
       await tick();
       let n = 0;

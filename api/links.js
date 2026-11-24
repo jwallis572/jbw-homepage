@@ -3,6 +3,8 @@
 //   { action: 'update',  id, link: { label, url, icon } }                   -> { link }
 //   { action: 'delete',  id }                                               -> { ok }
 //   { action: 'reorder', section, ids: [...] }                              -> { ok }
+//   { action: 'move', id, from, to, ids: [...], from_ids: [...] }          -> { ok }
+//       ids = the destination section's new order (including id); from_ids = what's left in `from`.
 // Replaces the browser's direct writes to the links table (plan §6.4).
 import { HttpError } from './_lib/http.js';
 import { authedHandler, bad, fromEnv } from './_lib/authed.js';
@@ -34,6 +36,14 @@ function cleanLink(input, { partial = false } = {}) {
 }
 
 const notFound = () => new HttpError(404, 'not_found', 'That link no longer exists.');
+const stale = () => new HttpError(409, 'stale', 'Some links changed. Reload and try again.');
+
+function checkIds(ids, { allowEmpty = true } = {}) {
+  if (!Array.isArray(ids) || (!allowEmpty && ids.length === 0) || ids.length > 200
+    || !ids.every(isId) || new Set(ids).size !== ids.length) {
+    throw bad('ids must be a list of link ids.');
+  }
+}
 
 const actions = {
   async insert({ link }, { store }) {
@@ -52,11 +62,29 @@ const actions = {
   },
   async reorder({ section, ids }, { store }) {
     if (!SECTIONS.includes(section)) throw bad('Unknown section.');
-    if (!Array.isArray(ids) || ids.length > 200 || !ids.every(isId) || new Set(ids).size !== ids.length) {
-      throw bad('ids must be a list of link ids.');
-    }
+    checkIds(ids);
     const updated = await store.setLinkOrder(section, ids);
-    if (updated !== ids.length) throw new HttpError(409, 'stale', 'Some links changed. Reload and try again.');
+    if (updated !== ids.length) throw stale();
+    return { ok: true };
+  },
+  // Moves one link to another section. The three writes run one after another, and each only
+  // PATCHes `section`/`sort_order` on rows that already exist (never insert or delete), so a failure
+  // partway can leave gaps or ties in sort_order but can never lose or duplicate a link:
+  //   1. the moved link's section and position (one row, and only if it is still in `from`)
+  //   2. the destination section's order
+  //   3. the source section's order
+  async move({ id, from, to, ids, from_ids }, { store }) {
+    if (!isId(id)) throw bad('Missing link id.');
+    if (!SECTIONS.includes(from) || !SECTIONS.includes(to)) throw bad('Unknown section.');
+    if (from === to) throw bad('Use reorder to move a link within a section.');
+    checkIds(ids, { allowEmpty: false });
+    checkIds(from_ids);
+    if (!ids.includes(id) || from_ids.includes(id)) throw bad('ids must include the moved link; from_ids must not.');
+
+    const moved = await store.moveLink(id, from, { section: to, sort_order: ids.indexOf(id) });
+    if (!moved) throw stale(); // gone, or already moved somewhere else (e.g. from another tab)
+    if ((await store.setLinkOrder(to, ids)) !== ids.length) throw stale();
+    if ((await store.setLinkOrder(from, from_ids)) !== from_ids.length) throw stale();
     return { ok: true };
   },
 };

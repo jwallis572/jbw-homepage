@@ -106,6 +106,13 @@ export function createSupabaseStore({ url, secretKey, fetch = globalThis.fetch }
       const rows = await rest(`links?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', prefer: 'return=representation' });
       return rows.length > 0;
     },
+    // Changes a link's section and position, but only if it is still in `from` (else null).
+    async moveLink(id, from, { section, sort_order }) {
+      const rows = await rest(`links?id=eq.${encodeURIComponent(id)}&section=eq.${encodeURIComponent(from)}`, {
+        method: 'PATCH', body: { section, sort_order }, prefer: 'return=representation',
+      });
+      return rows[0] || null;
+    },
     async setLinkOrder(section, ids) {
       const results = await Promise.all(ids.map((id, sort_order) =>
         rest(`links?id=eq.${encodeURIComponent(id)}&section=eq.${encodeURIComponent(section)}`, {
