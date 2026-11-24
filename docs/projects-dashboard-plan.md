@@ -166,6 +166,18 @@ projects.html                        api/projects.js (token required)──► a
   key (which bypasses RLS) can touch them.
 - The publishable key in `index.html` therefore can read links/settings and nothing else.
 
+### 4.5a Rules for SQL run by hand (added 2026-11-23)
+After a `drop table` meant for another Supabase project removed `links` and `settings` here
+(no backups existed; rebuilt with `docs/sql/003_restore_links_settings.sql`):
+- **Back up any table before dropping it.** Export its rows (CSV or JSON) and keep the file
+  outside git; check the row count in the file before running the drop.
+- **Every destructive SQL block starts with a project guard** inside `begin`/`commit`: a `do`
+  block that raises an exception unless a table that exists only in this project
+  (`public.auth_state`, `public.projects`) is present. Confirm the project name at the top of
+  the SQL Editor too, but don't rely on that alone.
+- Prefer non-destructive steps: drop policies or rename a table first, wait, and only drop it
+  once nothing has broken.
+
 ### 4.6 Headers and misc
 - `projects.html` and all `/api/*` except `timeline`: `Cache-Control: no-store`.
 - `/projects`: `X-Robots-Tag: noindex, nofollow` + `<meta name="robots" content="noindex">`.
